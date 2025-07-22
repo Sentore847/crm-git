@@ -13,11 +13,12 @@ model User {
   password  String
   createdAt DateTime  @default(now())
   projects  Project[]
+
   @@map("users")
 }
 
 model Project {
-  id        String   @id @default(uuid())
+  id        String @id @default(uuid())
   owner     String
   name      String
   url       String
@@ -26,6 +27,7 @@ model Project {
   issues    Int
   createdAt Int
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User   @relation(fields: [userId], references: [id])
+
   @@map("projects")
 }
