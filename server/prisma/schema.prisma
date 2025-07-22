@@ -8,11 +8,12 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
+  id        String    @id @default(uuid())
+  email     String    @unique
   password  String
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
   projects  Project[]
+  @@map("users")
 }
 
 model Project {
@@ -26,4 +27,5 @@ model Project {
   createdAt Int
   userId    String
   user      User     @relation(fields: [userId], references: [id])
+  @@map("projects")
 }
