@@ -5,7 +5,7 @@ import {authenticate} from '../middlewares/auth.middleware';
 const router = Router();
 
 router.post('/', authenticate, addProject);
-router.post('/', authenticate, getProjects);
+router.get('/', authenticate, getProjects);
 
 
 export default router;
