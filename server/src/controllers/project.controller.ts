@@ -64,3 +64,25 @@ export const getProjects = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Failed to fetch projects' });
   }
 };
+
+export const deleteProject = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const { id } = req.params;
+
+    const project = await prisma.project.findUnique({
+      where: { id },
+    });
+
+    if (!project || project.userId !== userId) {
+      return res.status(404).json({ message: 'Project not found or access denied' });
+    }
+
+    await prisma.project.delete({ where: { id } });
+
+    res.json({ message: 'Project deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to delete project' });
+  }
+};
