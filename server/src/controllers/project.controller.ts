@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
 import { prisma } from "../utils/prisma"
+import { AuthRequest } from '../middlewares/auth.middleware';
 import axios from 'axios';
 
-export const addProject = async (req: Request, res: Response) => {
+export const addProject = async (req: AuthRequest, res: Response) => {
   try {
     const { repoPath } = req.body;
 
@@ -22,7 +23,7 @@ export const addProject = async (req: Request, res: Response) => {
       created_at,
     } = githubRes.data;
 
-    const userId = (req as any).user.id;
+    const userId = req.userId!;
 
     const createdProject = await prisma.project.create({
       data: {
@@ -49,9 +50,9 @@ export const addProject = async (req: Request, res: Response) => {
   }
 };
 
-export const getProjects = async (req: Request, res: Response) => {
+export const getProjects = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = req.userId!;
 
     const projects = await prisma.project.findMany({
       where: { userId },
@@ -65,9 +66,9 @@ export const getProjects = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteProject = async (req: Request, res: Response) => {
+export const deleteProject = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = req.userId!;
     const { id } = req.params;
 
     const project = await prisma.project.findUnique({
