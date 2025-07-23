@@ -1,5 +1,5 @@
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
 import type { SignupFormData } from '../types/auth.types';
 import api from '../services/api';
@@ -95,6 +95,10 @@ const Signup = () => {
             Sign Up
           </button>
         </form>
+
+        <p className="mt-3 text-center">
+          Already have an account? <Link to="/login">Log in</Link>
+        </p>
       </div>
     </div>
   );
