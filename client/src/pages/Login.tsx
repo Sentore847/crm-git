@@ -1,9 +1,13 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import axios from 'axios';
 
-const Login = () => {
+interface LoginProps {
+  onLogin: () => void;
+}
+
+const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,6 +20,7 @@ const Login = () => {
     try {
       const res = await api.post('/auth/login', { email, password });
       localStorage.setItem('token', res.data.token);
+      onLogin();
       navigate('/projects');
     } catch (err) {
       if (axios.isAxiosError(err)) {
@@ -54,6 +59,9 @@ const Login = () => {
             Login
           </button>
         </form>
+        <p className="mt-3 text-center">
+          Don't have an account? <Link to="/signup">Sign Up</Link>
+        </p>
       </div>
     </div>
   );
