@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { prisma } from "../utils/prisma"
 import { AuthRequest } from '../middlewares/auth.middleware';
 import axios from 'axios';
