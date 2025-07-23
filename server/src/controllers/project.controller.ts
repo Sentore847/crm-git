@@ -48,3 +48,19 @@ export const addProject = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Failed to add project' });
   }
 };
+
+export const getProjects = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+
+    const projects = await prisma.project.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json(projects);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to fetch projects' });
+  }
+};
