@@ -87,3 +87,49 @@ export const deleteProject = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: 'Failed to delete project' });
   }
 };
+
+export const updateProject = async (req: AuthRequest, res: Response) => {
+  const userId = req.userId!;
+  const { id } = req.params;
+
+  try {
+    const project = await prisma.project.findUnique({
+      where: { id },
+    });
+
+    if (!project || project.userId !== userId) {
+      return res.status(404).json({ message: 'Project not found or access denied' });
+    }
+
+    const githubRes = await axios.get(`https://api.github.com/repos/${project.owner}/${project.name}`);
+
+    const {
+      html_url: url,
+      stargazers_count: stars,
+      forks_count: forks,
+      open_issues_count: issues,
+      created_at,
+    } = githubRes.data;
+
+    const updatedProject = await prisma.project.update({
+      where: { id },
+      data: {
+        url,
+        stars,
+        forks,
+        issues,
+        createdAt: Math.floor(new Date(created_at).getTime() / 1000),
+      },
+    });
+
+    res.json(updatedProject);
+  } catch (error: any) {
+    console.error(error);
+
+    if (error.response?.status === 404) {
+      return res.status(404).json({ message: 'Repository not found on GitHub' });
+    }
+
+    res.status(500).json({ message: 'Failed to update project' });
+  }
+};
