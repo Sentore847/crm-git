@@ -11,8 +11,20 @@ export const addProject = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Invalid repo path. Use format "owner/repo".' });
     }
 
-      const [owner, name] = repoPath.split('/');
-      
+    const [owner, name] = repoPath.split('/');
+
+    const existingProject = await prisma.project.findFirst({
+      where: {
+        owner,
+        name,
+        userId: req.userId!,
+      },
+    });
+
+    if (existingProject) {
+      return res.status(400).json({ message: 'Project already added' });
+    }
+
     const githubRes = await axios.get(`https://api.github.com/repos/${owner}/${name}`);
 
     const {
