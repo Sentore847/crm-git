@@ -1,6 +1,6 @@
 import { useForm } from 'react-hook-form';
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import type { SignupFormData } from '../types/auth.types';
 import api from '../services/api';
 import axios from 'axios';
@@ -10,9 +10,10 @@ const Signup = () => {
     register,
     handleSubmit,
     watch,
-    formState: { errors },
-  } = useForm<SignupFormData>();
+    formState: { errors, isValid },
+  } = useForm<SignupFormData>({ mode: 'onChange' });
 
+  const password = watch('password');
   const [serverError, setServerError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
@@ -20,13 +21,11 @@ const Signup = () => {
   const onSubmit = async (data: SignupFormData) => {
     setServerError('');
     setSuccess('');
-
     try {
       await api.post('/auth/signup', {
         email: data.email,
         password: data.password,
       });
-
       setSuccess('Registration successful! Redirecting...');
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
@@ -38,8 +37,6 @@ const Signup = () => {
     }
   };
 
-  const password = watch('password');
-
   return (
     <div className="d-flex vh-100 justify-content-center align-items-center bg-light">
       <div className="bg-white p-4 rounded shadow" style={{ maxWidth: 400, width: '100%' }}>
@@ -50,8 +47,9 @@ const Signup = () => {
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <input
-            className={`form-control mb-2 ${errors.email ? 'is-invalid' : ''}`}
+            type="email"
             placeholder="Email"
+            className={`form-control mb-2 ${errors.email ? 'is-invalid' : ''}`}
             {...register('email', {
               required: 'Email is required',
               pattern: {
@@ -60,14 +58,12 @@ const Signup = () => {
               },
             })}
           />
-          {errors.email && (
-            <div className="invalid-feedback d-block">{errors.email.message}</div>
-          )}
+          {errors.email && <div className="invalid-feedback d-block">{errors.email.message}</div>}
 
           <input
-            className={`form-control mb-2 ${errors.password ? 'is-invalid' : ''}`}
             type="password"
             placeholder="Password"
+            className={`form-control mb-2 ${errors.password ? 'is-invalid' : ''}`}
             {...register('password', {
               required: 'Password is required',
               minLength: {
@@ -80,27 +76,22 @@ const Signup = () => {
               },
             })}
           />
-          {errors.password && (
-            <div className="invalid-feedback d-block">{errors.password.message}</div>
-          )}
+          {errors.password && <div className="invalid-feedback d-block">{errors.password.message}</div>}
 
           <input
-            className={`form-control mb-3 ${errors.confirmPassword ? 'is-invalid' : ''}`}
             type="password"
             placeholder="Confirm Password"
+            className={`form-control mb-3 ${errors.confirmPassword ? 'is-invalid' : ''}`}
             {...register('confirmPassword', {
               required: 'Please confirm your password',
-              validate: value =>
-                value === password || 'Passwords do not match',
+              validate: value => value === password || 'Passwords do not match',
             })}
           />
           {errors.confirmPassword && (
-            <div className="invalid-feedback d-block">
-              {errors.confirmPassword.message}
-            </div>
+            <div className="invalid-feedback d-block">{errors.confirmPassword.message}</div>
           )}
 
-          <button className="btn btn-primary w-100" type="submit">
+          <button className="btn btn-primary w-100" type="submit" disabled={!isValid}>
             Sign Up
           </button>
         </form>
