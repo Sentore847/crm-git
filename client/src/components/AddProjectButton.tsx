@@ -34,7 +34,7 @@ const AddProjectModal = ({ onClose, onAdd }: Props) => {
       const token = localStorage.getItem('token');
       const res = await api.post(
         '/projects',
-        { repoPath: data.repoPath }, // ✅ ВИПРАВЛЕНО: було path
+        { repoPath: data.repoPath },
         {
           headers: {
             Authorization: `Bearer ${token}`,
