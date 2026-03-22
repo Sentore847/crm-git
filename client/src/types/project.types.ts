@@ -8,3 +8,17 @@ export interface Project {
   issues: number;
   createdAt: number;
 }
+
+export interface ProjectsPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasPrev: boolean;
+  hasNext: boolean;
+}
+
+export interface ProjectsListResponse {
+  items: Project[];
+  pagination: ProjectsPagination;
+}

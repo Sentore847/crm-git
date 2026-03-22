@@ -1,147 +1,95 @@
 import { Response } from 'express';
-import { prisma } from "../utils/prisma"
 import { AuthRequest } from '../middlewares/auth.middleware';
-import axios from 'axios';
+import { AppError } from '../utils/app-error';
+import { asyncHandler } from '../utils/async-handler';
+import {
+  addProjectForUser,
+  deleteProjectForUser,
+  getProjectBranchesForUser,
+  getProjectDetailsForUser,
+  getProjectIssuesForUser,
+  getProjectPullRequestsForUser,
+  getProjectsForUser,
+  getProjectsForUserLegacy,
+  updateProjectForUser,
+} from '../services/project.service';
+import {
+  summarizeLatestBranchChanges,
+  summarizeLatestIssues,
+  summarizeLatestPullRequests,
+} from '../services/project-ai.service';
 
-export const addProject = async (req: AuthRequest, res: Response) => {
-  try {
-    const { repoPath } = req.body;
+export const addProject = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { repoPath } = req.body as { repoPath?: string };
 
-    if (!repoPath || !repoPath.includes('/')) {
-      return res.status(400).json({ message: 'Invalid repo path. Use format "owner/repo".' });
-    }
-
-    const [owner, name] = repoPath.split('/');
-
-    const existingProject = await prisma.project.findFirst({
-      where: {
-        owner,
-        name,
-        userId: req.userId!,
-      },
-    });
-
-    if (existingProject) {
-      return res.status(400).json({ message: 'Project already added' });
-    }
-
-    const githubRes = await axios.get(`https://api.github.com/repos/${owner}/${name}`);
-
-    const {
-      html_url: url,
-      stargazers_count: stars,
-      forks_count: forks,
-      open_issues_count: issues,
-      created_at,
-    } = githubRes.data;
-
-    const userId = req.userId!;
-
-    const createdProject = await prisma.project.create({
-      data: {
-        owner,
-        name,
-        url,
-        stars,
-        forks,
-        issues,
-        createdAt: Math.floor(new Date(created_at).getTime() / 1000),
-        userId,
-      },
-    });
-
-    res.status(201).json(createdProject);
-  } catch (error: any) {
-    console.error(error);
-
-    if (error.response?.status === 404) {
-      return res.status(404).json({ message: 'Repository not found on GitHub' });
-    }
-
-    res.status(500).json({ message: 'Failed to add project' });
+  if (!repoPath || typeof repoPath !== 'string') {
+    throw new AppError(400, 'Invalid repository path. Use "owner/repo" (GitHub), "gitlab:group/repo", "bitbucket:workspace/repo" or full HTTPS URL.');
   }
-};
 
-export const getProjects = async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.userId!;
+  const project = await addProjectForUser(req.userId!, repoPath);
+  res.status(201).json(project);
+});
 
-    const projects = await prisma.project.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-    });
+export const getProjects = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { page, limit } = req.query;
 
+  if (typeof page === 'undefined' && typeof limit === 'undefined') {
+    const projects = await getProjectsForUserLegacy(req.userId!);
     res.json(projects);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Failed to fetch projects' });
+    return;
   }
-};
 
-export const deleteProject = async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.userId!;
-    const { id } = req.params;
+  const projects = await getProjectsForUser(req.userId!, page, limit);
+  res.json(projects);
+});
 
-    const project = await prisma.project.findUnique({
-      where: { id },
-    });
+export const getProjectDetails = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const details = await getProjectDetailsForUser(req.params.id, req.userId!);
+  res.json(details);
+});
 
-    if (!project || project.userId !== userId) {
-      return res.status(404).json({ message: 'Project not found or access denied' });
-    }
+export const getProjectBranches = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { sort, limit } = req.query;
+  const payload = await getProjectBranchesForUser(req.params.id, req.userId!, sort, limit);
+  res.json(payload);
+});
 
-    await prisma.project.delete({ where: { id } });
+export const getProjectIssues = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { sort, limit } = req.query;
+  const payload = await getProjectIssuesForUser(req.params.id, req.userId!, sort, limit);
+  res.json(payload);
+});
 
-    res.json({ message: 'Project deleted successfully' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Failed to delete project' });
-  }
-};
+export const getProjectPullRequests = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { sort, limit } = req.query;
+  const payload = await getProjectPullRequestsForUser(req.params.id, req.userId!, sort, limit);
+  res.json(payload);
+});
 
-export const updateProject = async (req: AuthRequest, res: Response) => {
-  const userId = req.userId!;
-  const { id } = req.params;
+export const askLatestChangesInBranch = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { branchName } = req.body as { branchName?: string };
+  const summary = await summarizeLatestBranchChanges(req.params.id, req.userId!, branchName || '');
+  res.json(summary);
+});
 
-  try {
-    const project = await prisma.project.findUnique({
-      where: { id },
-    });
+export const askLatestIssuesOverview = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { limit } = req.body as { limit?: unknown };
+  const summary = await summarizeLatestIssues(req.params.id, req.userId!, limit);
+  res.json(summary);
+});
 
-    if (!project || project.userId !== userId) {
-      return res.status(404).json({ message: 'Project not found or access denied' });
-    }
+export const askLatestPullRequestsOverview = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { limit } = req.body as { limit?: unknown };
+  const summary = await summarizeLatestPullRequests(req.params.id, req.userId!, limit);
+  res.json(summary);
+});
 
-    const githubRes = await axios.get(`https://api.github.com/repos/${project.owner}/${project.name}`);
+export const deleteProject = asyncHandler(async (req: AuthRequest, res: Response) => {
+  await deleteProjectForUser(req.params.id, req.userId!);
+  res.json({ message: 'Project deleted successfully' });
+});
 
-    const {
-      html_url: url,
-      stargazers_count: stars,
-      forks_count: forks,
-      open_issues_count: issues,
-      created_at,
-    } = githubRes.data;
-
-    const updatedProject = await prisma.project.update({
-      where: { id },
-      data: {
-        url,
-        stars,
-        forks,
-        issues,
-        createdAt: Math.floor(new Date(created_at).getTime() / 1000),
-      },
-    });
-
-    res.json(updatedProject);
-  } catch (error: any) {
-    console.error(error);
-
-    if (error.response?.status === 404) {
-      return res.status(404).json({ message: 'Repository not found on GitHub' });
-    }
-
-    res.status(500).json({ message: 'Failed to update project' });
-  }
-};
+export const updateProject = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const updatedProject = await updateProjectForUser(req.params.id, req.userId!);
+  res.json(updatedProject);
+});

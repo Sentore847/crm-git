@@ -34,8 +34,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="d-flex vh-100 justify-content-center align-items-center bg-light">
-      <div className="bg-white p-4 rounded shadow" style={{ maxWidth: 400, width: '100%' }}>
+    <div className="auth-page d-flex vh-100 justify-content-center align-items-center">
+      <div className="auth-card p-4 rounded shadow" style={{ maxWidth: 400, width: '100%' }}>
         <h2 className="mb-4 text-center">Login</h2>
         {error && <div className="alert alert-danger">{error}</div>}
         <form onSubmit={handleSubmit}>

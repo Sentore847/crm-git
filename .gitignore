@@ -2,6 +2,8 @@
 node_modules/
 dist/
 .env
+.env.development
+.env.local
 
 # TypeScript
 *.tsbuildinfo
@@ -24,3 +26,6 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Claude Code worktrees
+.claude/worktrees/

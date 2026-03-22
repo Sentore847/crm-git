@@ -13,6 +13,22 @@ interface FormData {
   repoPath: string;
 }
 
+const isValidRepositoryInput = (value: string) => {
+  const trimmed = value.trim();
+  const githubDefaultPattern = /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/i;
+  const githubPrefixedPattern = /^github:[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/i;
+  const gitlabPrefixedPattern = /^gitlab:[a-zA-Z0-9._-]+(?:\/[a-zA-Z0-9._-]+)+$/i;
+  const bitbucketPrefixedPattern = /^bitbucket:[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/i;
+  const supportedUrlPattern = /^https?:\/\/(github\.com|gitlab\.com|bitbucket\.org)\/[^\s]+$/i;
+  return (
+    githubDefaultPattern.test(trimmed) ||
+    githubPrefixedPattern.test(trimmed) ||
+    gitlabPrefixedPattern.test(trimmed) ||
+    bitbucketPrefixedPattern.test(trimmed) ||
+    supportedUrlPattern.test(trimmed)
+  );
+};
+
 const AddProjectModal = ({ onClose, onAdd }: Props) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -61,20 +77,19 @@ const AddProjectModal = ({ onClose, onAdd }: Props) => {
       className="d-flex align-items-center justify-content-center position-fixed top-0 start-0 w-100 h-100" 
       style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}
     >
-      <div className="bg-white p-4 rounded shadow" style={{ maxWidth: 400, width: '100%' }}>
-        <h5 className="mb-3">Add GitHub Project</h5>
+      <div className="auth-card p-4 rounded shadow" style={{ maxWidth: 400, width: '100%' }}>
+        <h5 className="mb-3">Add Repository</h5>
         {error && <div className="alert alert-danger">{error}</div>}
         <form onSubmit={handleSubmit(onSubmit)}>
           <input
             type="text"
             className={`form-control mb-3 ${errors.repoPath ? 'is-invalid' : ''}`}
-            placeholder="e.g. facebook/react"
+            placeholder="e.g. facebook/react, gitlab:gitlab-org/gitlab, bitbucket:workspace/repo"
             {...register('repoPath', {
               required: 'Project path is required',
-              pattern: {
-                value: /^[a-zA-Z0-9-_]+\/[a-zA-Z0-9-_]+$/,
-                message: 'Invalid repo path. Use format "owner/repo".',
-              },
+              validate: value =>
+                isValidRepositoryInput(value) ||
+                'Invalid path. Use owner/repo, gitlab:group/repo, bitbucket:workspace/repo or HTTPS URL.',
             })}
           />
           {errors.repoPath && (
