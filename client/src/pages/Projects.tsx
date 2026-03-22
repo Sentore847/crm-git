@@ -6,6 +6,8 @@ import axios from 'axios';
 import AddProjectModal from '../components/AddProjectButton';
 import ProjectCard from '../components/ProjectCard';
 import LogoutButton from '../components/LogoutButton';
+import SettingsButton from '../components/SettingsButton';
+import IntroGuide from '../components/IntroGuide';
 
 interface ProjectProps {
     onLogout: () => void;
@@ -91,6 +93,8 @@ const Projects: React.FC<ProjectProps> = ({onLogout}) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showIntro, setShowIntro] = useState(false);
+  const [introChecked, setIntroChecked] = useState(false);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState<ProjectsPagination>({
     page: 1,
@@ -136,6 +140,20 @@ const Projects: React.FC<ProjectProps> = ({onLogout}) => {
     void fetchProjects(page);
   }, [page]);
 
+  useEffect(() => {
+    if (introChecked) return;
+    setIntroChecked(true);
+    api.get<{ hideIntro: boolean }>('/user/settings')
+      .then(res => {
+        if (!res.data.hideIntro) {
+          setShowIntro(true);
+        }
+      })
+      .catch(() => {
+        // If settings fail to load, don't show intro.
+      });
+  }, [introChecked]);
+
   const handleAdd = (_newProject: Project) => {
     const firstPage = 1;
 
@@ -168,6 +186,7 @@ const Projects: React.FC<ProjectProps> = ({onLogout}) => {
           >
             Add Project
           </button> : ""}
+          <SettingsButton />
           <LogoutButton onLogout={onLogout} />
         </div>
       </div>
@@ -231,6 +250,8 @@ const Projects: React.FC<ProjectProps> = ({onLogout}) => {
       {showAddModal && (
         <AddProjectModal onClose={() => setShowAddModal(false)} onAdd={handleAdd} />
       )}
+
+      {showIntro && <IntroGuide onDismiss={() => setShowIntro(false)} />}
     </div>
   );
 };

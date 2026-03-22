@@ -84,3 +84,23 @@ export interface PullRequestsSummaryResponse {
   summary: string;
   latestPullRequests: PullRequestInfo[];
 }
+
+export interface CodeReviewFinding {
+  file: string;
+  line?: string;
+  snippet: string;
+  type: 'bug' | 'practice' | 'security' | 'improvement';
+  severity: 'high' | 'medium' | 'low';
+  description: string;
+}
+
+export interface CodeReviewResponse {
+  branchName: string;
+  commitsAnalyzed: number;
+  findings: CodeReviewFinding[];
+}
+
+export interface CodeFixResponse {
+  improvedCode: string;
+  explanation: string;
+}

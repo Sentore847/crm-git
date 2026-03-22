@@ -2,6 +2,7 @@ import axios from 'axios';
 import { env } from '../config/env';
 import {
   fetchBranchesWithCommits as fetchGithubBranchesWithCommits,
+  fetchCommitDiff as fetchGithubCommitDiff,
   fetchCommitsForBranch as fetchGithubCommitsForBranch,
   fetchIssuesSlice as fetchGithubIssuesSlice,
   fetchPullRequestsSlice as fetchGithubPullRequestsSlice,
@@ -699,4 +700,77 @@ export const fetchCommitsByProvider = async (
     author: commit.author?.raw,
     htmlUrl: commit.links?.html?.href || `https://bitbucket.org/${owner}/${name}/commits/${commit.hash}`,
   }));
+};
+
+interface GitLabDiffEntry {
+  diff: string;
+  new_path: string;
+  old_path: string;
+}
+
+export const fetchCommitDiffByProvider = async (
+  provider: RepoProvider,
+  owner: string,
+  name: string,
+  sha: string
+): Promise<string> => {
+  if (provider === 'github') {
+    return fetchGithubCommitDiff(owner, name, sha);
+  }
+
+  if (provider === 'gitlab') {
+    const diffs = await gitlabClient.get<GitLabDiffEntry[]>(
+      `/projects/${gitlabProjectId(owner, name)}/repository/commits/${sha}/diff`
+    );
+    return diffs.data
+      .map(entry => `--- a/${entry.old_path}\n+++ b/${entry.new_path}\n${entry.diff}`)
+      .join('\n');
+  }
+
+  const res = await bitbucketClient.get<string>(
+    `/repositories/${owner}/${name}/diff/${sha}`,
+    { responseType: 'text', transformResponse: [(data: string) => data] }
+  );
+  return res.data;
+};
+
+export const fetchRecentDiffs = async (
+  provider: RepoProvider,
+  owner: string,
+  name: string,
+  branch: string,
+  limit: number,
+  maxTotalLength: number
+): Promise<{ diffs: string; commitsAnalyzed: number }> => {
+  const commits = await fetchCommitsByProvider(provider, owner, name, branch, limit);
+
+  if (commits.length === 0) {
+    return { diffs: '', commitsAnalyzed: 0 };
+  }
+
+  let combined = '';
+  let analyzed = 0;
+
+  for (const commit of commits) {
+    try {
+      const diff = await fetchCommitDiffByProvider(provider, owner, name, commit.sha);
+      const header = `\n=== Commit ${commit.sha.slice(0, 7)} by ${commit.author || 'unknown'}: ${commit.message.split('\n')[0]} ===\n`;
+
+      if (combined.length + header.length + diff.length > maxTotalLength) {
+        const remaining = maxTotalLength - combined.length - header.length;
+        if (remaining > 200) {
+          combined += header + diff.slice(0, remaining) + '\n... (truncated)';
+          analyzed += 1;
+        }
+        break;
+      }
+
+      combined += header + diff;
+      analyzed += 1;
+    } catch {
+      continue;
+    }
+  }
+
+  return { diffs: combined, commitsAnalyzed: analyzed };
 };

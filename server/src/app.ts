@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth.routes';
 import projectRoutes from './routes/project.routes';
+import userRoutes from './routes/user.routes';
 import { errorHandler } from './middlewares/error.middleware';
 
 const app = express();
@@ -17,6 +18,7 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/user', userRoutes);
 app.use('/api/projects', projectRoutes);
 
 app.get('/', (_req, res) => {

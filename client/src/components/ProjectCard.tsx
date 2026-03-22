@@ -6,6 +6,9 @@ import type {
   BranchesResponse,
   BranchInfo,
   BranchSummaryResponse,
+  CodeFixResponse,
+  CodeReviewFinding,
+  CodeReviewResponse,
   IssueInfo,
   IssuesResponse,
   IssuesSummaryResponse,
@@ -23,7 +26,7 @@ interface Props {
   onDelete: (id: string) => void;
 }
 
-type InsightsTab = 'branches' | 'issues' | 'pulls';
+type InsightsTab = 'branches' | 'issues' | 'pulls' | 'review';
 type BranchSortMode = 'latest' | 'oldest';
 type IssueSortMode = 'newest' | 'oldest';
 type PullRequestSortMode = 'recent' | 'oldest';
@@ -164,6 +167,27 @@ const IconSpark = () => (
   </IconBase>
 );
 
+const IconCodeReview = () => (
+  <IconBase className="project-icon tab-icon">
+    <path d="M9 7l-4 5 4 5" />
+    <path d="M15 7l4 5-4 5" />
+    <path d="M13 4l-2 16" />
+  </IconBase>
+);
+
+const SEVERITY_COLORS: Record<string, string> = {
+  high: 'danger',
+  medium: 'warning',
+  low: 'info',
+};
+
+const TYPE_LABELS: Record<string, string> = {
+  bug: 'Bug',
+  practice: 'Bad Practice',
+  security: 'Security',
+  improvement: 'Improvement',
+};
+
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (axios.isAxiosError(error)) {
     return error.response?.data?.message || fallback;
@@ -193,6 +217,7 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
     branches: false,
     issues: false,
     pulls: false,
+    review: false,
   });
 
   const [branchesLoading, setBranchesLoading] = useState(false);
@@ -215,6 +240,15 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
   const [pullsAiLoading, setPullsAiLoading] = useState(false);
   const [pullsAiError, setPullsAiError] = useState('');
   const [pullsAiSummary, setPullsAiSummary] = useState('');
+
+  const [reviewBranch, setReviewBranch] = useState('');
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+  const [reviewFindings, setReviewFindings] = useState<CodeReviewFinding[]>([]);
+  const [reviewCommitsAnalyzed, setReviewCommitsAnalyzed] = useState(0);
+  const [fixLoadingIndex, setFixLoadingIndex] = useState<number | null>(null);
+  const [fixResults, setFixResults] = useState<Record<number, { improvedCode: string; explanation: string }>>({});
+  const [fixError, setFixError] = useState('');
 
   const formatProjectDate = (timestamp: number) => new Date(timestamp * 1000).toUTCString();
   const formatIsoDate = (value?: string) => (value ? new Date(value).toUTCString() : '-');
@@ -239,6 +273,13 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
         }
 
         return res.data.branches[0].name;
+      });
+      setReviewBranch(prev => {
+        if (prev && res.data.branches.some(branch => branch.name === prev)) {
+          return prev;
+        }
+
+        return res.data.branches.length > 0 ? res.data.branches[0].name : '';
       });
 
       setLoadedTabs(prev => ({ ...prev, branches: true }));
@@ -298,6 +339,10 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
 
     if (tab === 'pulls' && !loadedTabs.pulls) {
       await loadPullRequests(pullRequestSortMode);
+    }
+
+    if (tab === 'review' && !loadedTabs.branches) {
+      await loadBranches(branchSortMode);
     }
   };
 
@@ -402,6 +447,54 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
     }
   };
 
+  const handleCodeReview = async () => {
+    if (!reviewBranch) {
+      setReviewError('Select a branch first');
+      return;
+    }
+
+    setReviewLoading(true);
+    setReviewError('');
+    setReviewFindings([]);
+    setFixResults({});
+    setFixError('');
+
+    try {
+      const res = await api.post<CodeReviewResponse>(`/projects/${project.id}/ai/code-review`, {
+        branchName: reviewBranch,
+      });
+
+      setReviewFindings(res.data.findings);
+      setReviewCommitsAnalyzed(res.data.commitsAnalyzed);
+    } catch (error) {
+      setReviewError(getErrorMessage(error, 'Failed to review code'));
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  const handleSuggestFix = async (finding: CodeReviewFinding, index: number) => {
+    setFixLoadingIndex(index);
+    setFixError('');
+
+    try {
+      const res = await api.post<CodeFixResponse>(`/projects/${project.id}/ai/code-fix`, {
+        file: finding.file,
+        snippet: finding.snippet,
+        description: finding.description,
+      });
+
+      setFixResults(prev => ({
+        ...prev,
+        [index]: { improvedCode: res.data.improvedCode, explanation: res.data.explanation },
+      }));
+    } catch (error) {
+      setFixError(getErrorMessage(error, 'Failed to generate fix suggestion'));
+    } finally {
+      setFixLoadingIndex(null);
+    }
+  };
+
   return (
     <div className="project-card card h-100 border-0 shadow-sm">
       <div className="card-body d-flex flex-column">
@@ -489,6 +582,14 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
               >
                 <IconPR />
                 <span>Pull requests</span>
+              </button>
+              <button
+                type="button"
+                className={`insights-tab-btn ${activeTab === 'review' ? 'active' : ''}`}
+                onClick={() => void switchTab('review')}
+              >
+                <IconCodeReview />
+                <span>Code review</span>
               </button>
             </div>
 
@@ -733,6 +834,101 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'review' && (
+              <div>
+                <div className="d-flex flex-wrap gap-2 mb-3 align-items-center">
+                  <select
+                    className="form-select form-select-sm"
+                    style={{ width: 280 }}
+                    value={reviewBranch}
+                    onChange={event => setReviewBranch(event.target.value)}
+                  >
+                    {branches.length === 0 && <option value="">No branches loaded</option>}
+                    {branches.map(branch => (
+                      <option key={branch.name} value={branch.name}>
+                        {branch.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn btn-outline-primary btn-sm d-flex align-items-center gap-2"
+                    onClick={() => void handleCodeReview()}
+                    disabled={reviewLoading || !reviewBranch}
+                  >
+                    <IconSpark />
+                    {reviewLoading ? 'Analyzing...' : 'Review code'}
+                  </button>
+                </div>
+
+                {reviewError && <div className="alert alert-danger py-2">{reviewError}</div>}
+                {fixError && <div className="alert alert-warning py-2">{fixError}</div>}
+
+                {reviewLoading && (
+                  <div className="d-flex align-items-center gap-2 py-3">
+                    <div className="spinner-border spinner-border-sm text-secondary" role="status" />
+                    <span className="text-muted">AI is analyzing recent commits...</span>
+                  </div>
+                )}
+
+                {!reviewLoading && reviewFindings.length > 0 && (
+                  <div>
+                    <p className="text-muted small mb-2">
+                      Found {reviewFindings.length} issue{reviewFindings.length !== 1 ? 's' : ''} in {reviewCommitsAnalyzed} commit{reviewCommitsAnalyzed !== 1 ? 's' : ''}
+                    </p>
+                    <div className="d-flex flex-column gap-3">
+                      {reviewFindings.map((finding, index) => (
+                        <div key={index} className="card border-0 shadow-sm">
+                          <div className="card-body py-2 px-3">
+                            <div className="d-flex align-items-center gap-2 mb-1">
+                              <span className={`badge bg-${SEVERITY_COLORS[finding.severity] || 'secondary'}`}>
+                                {finding.severity}
+                              </span>
+                              <span className="badge bg-secondary">
+                                {TYPE_LABELS[finding.type] || finding.type}
+                              </span>
+                              <code className="small text-muted">{finding.file}{finding.line ? `:${finding.line}` : ''}</code>
+                            </div>
+                            <p className="mb-1 small">{finding.description}</p>
+                            {finding.snippet && (
+                              <pre className="bg-body-tertiary rounded p-2 small mb-2" style={{ whiteSpace: 'pre-wrap', maxHeight: 150, overflow: 'auto' }}>
+                                <code>{finding.snippet}</code>
+                              </pre>
+                            )}
+                            <div className="d-flex gap-2 align-items-center">
+                              <button
+                                type="button"
+                                className="btn btn-outline-success btn-sm d-flex align-items-center gap-1"
+                                onClick={() => void handleSuggestFix(finding, index)}
+                                disabled={fixLoadingIndex === index}
+                              >
+                                <IconSpark />
+                                {fixLoadingIndex === index ? 'Generating...' : 'Suggest fix'}
+                              </button>
+                            </div>
+                            {fixResults[index] && (
+                              <div className="mt-2">
+                                <p className="small text-muted mb-1">{fixResults[index].explanation}</p>
+                                <pre className="bg-body-tertiary rounded p-2 small" style={{ whiteSpace: 'pre-wrap', maxHeight: 200, overflow: 'auto' }}>
+                                  <code>{fixResults[index].improvedCode}</code>
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {!reviewLoading && reviewFindings.length === 0 && reviewCommitsAnalyzed > 0 && (
+                  <div className="alert alert-success py-2">
+                    No issues found in the last {reviewCommitsAnalyzed} commit{reviewCommitsAnalyzed !== 1 ? 's' : ''}. Code looks good!
+                  </div>
+                )}
               </div>
             )}
           </div>

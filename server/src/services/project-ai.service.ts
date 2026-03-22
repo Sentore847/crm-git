@@ -3,6 +3,14 @@ import {
   BRANCH_SUMMARY_COMMITS_LIMIT,
   BRANCH_SUMMARY_RETURN_FORMAT,
   BRANCH_SUMMARY_SYSTEM_PROMPT,
+  CODE_FIX_MAX_TOKENS,
+  CODE_FIX_RETURN_FORMAT,
+  CODE_FIX_SYSTEM_PROMPT,
+  CODE_REVIEW_COMMITS_LIMIT,
+  CODE_REVIEW_MAX_DIFF_LENGTH,
+  CODE_REVIEW_MAX_TOKENS,
+  CODE_REVIEW_RETURN_FORMAT,
+  CODE_REVIEW_SYSTEM_PROMPT,
   ISSUES_OVERVIEW_RETURN_FORMAT,
   ISSUES_OVERVIEW_SYSTEM_PROMPT,
   PULLS_OVERVIEW_RETURN_FORMAT,
@@ -11,24 +19,44 @@ import {
   SUMMARY_MAX_LIMIT,
   SUMMARY_MIN_LIMIT,
 } from '../constants/project-ai.constants';
-import { generateSummaryFromPrompt, isAiConfigured } from '../utils/ai';
+import { generateSummaryFromPrompt, isAiConfigured, type AiConfig } from '../utils/ai';
 import {
   detectProviderFromRepositoryUrl,
   fetchCommitsByProvider,
   fetchIssuesByProvider,
   fetchPullRequestsByProvider,
+  fetchRecentDiffs,
   UnifiedIssue,
   UnifiedPullRequest,
 } from '../utils/repository-provider';
 import { AppError } from '../utils/app-error';
 import { mapProviderError, getProviderLabel } from '../utils/provider-error';
 import { getOwnedProjectOrThrow } from './project.service';
+import { prisma } from '../utils/prisma';
 
-const OPENAI_MISSING_KEY_MESSAGE = 'OPENAI_API_KEY is not configured on the backend.';
+const AI_MISSING_KEY_MESSAGE = 'AI API key is not configured. Set your key in Settings.';
 
-const ensureAiConfiguredOrThrow = () => {
-  if (!isAiConfigured()) {
-    throw new AppError(400, OPENAI_MISSING_KEY_MESSAGE);
+const getUserAiConfig = async (userId: string): Promise<AiConfig | null> => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { aiProvider: true, aiApiKey: true, aiModel: true, aiBaseUrl: true },
+  });
+
+  if (!user?.aiApiKey) {
+    return null;
+  }
+
+  return {
+    apiKey: user.aiApiKey,
+    provider: user.aiProvider,
+    model: user.aiModel,
+    baseUrl: user.aiBaseUrl,
+  };
+};
+
+const ensureAiConfiguredOrThrow = (config: AiConfig | null) => {
+  if (!isAiConfigured(config?.apiKey)) {
+    throw new AppError(400, AI_MISSING_KEY_MESSAGE);
   }
 };
 
@@ -86,7 +114,8 @@ export const summarizeLatestBranchChanges = async (
   userId: string,
   branchName: string
 ) => {
-  ensureAiConfiguredOrThrow();
+  const aiConfig = await getUserAiConfig(userId);
+  ensureAiConfiguredOrThrow(aiConfig);
 
   if (!branchName) {
     throw new AppError(400, 'branchName is required');
@@ -119,7 +148,8 @@ export const summarizeLatestBranchChanges = async (
 
     const summary = await generateSummaryFromPrompt(
       BRANCH_SUMMARY_SYSTEM_PROMPT,
-      `Repository: ${project.owner}/${project.name}\nBranch: ${branchName}\nLatest commits:\n${commitsText}\n\n${BRANCH_SUMMARY_RETURN_FORMAT}`
+      `Repository: ${project.owner}/${project.name}\nBranch: ${branchName}\nLatest commits:\n${commitsText}\n\n${BRANCH_SUMMARY_RETURN_FORMAT}`,
+      aiConfig
     );
 
     return {
@@ -150,7 +180,8 @@ export const summarizeLatestIssues = async (
   userId: string,
   limitValue: unknown
 ) => {
-  ensureAiConfiguredOrThrow();
+  const aiConfig = await getUserAiConfig(userId);
+  ensureAiConfiguredOrThrow(aiConfig);
 
   const limit = parseSummaryLimit(limitValue);
   const project = await getOwnedProjectOrThrow(projectId, userId);
@@ -161,7 +192,8 @@ export const summarizeLatestIssues = async (
 
     const summary = await generateSummaryFromPrompt(
       ISSUES_OVERVIEW_SYSTEM_PROMPT,
-      `${buildIssuesPrompt(latestIssues, project.owner, project.name)}\n\n${ISSUES_OVERVIEW_RETURN_FORMAT}`
+      `${buildIssuesPrompt(latestIssues, project.owner, project.name)}\n\n${ISSUES_OVERVIEW_RETURN_FORMAT}`,
+      aiConfig
     );
 
     return {
@@ -188,7 +220,8 @@ export const summarizeLatestPullRequests = async (
   userId: string,
   limitValue: unknown
 ) => {
-  ensureAiConfiguredOrThrow();
+  const aiConfig = await getUserAiConfig(userId);
+  ensureAiConfiguredOrThrow(aiConfig);
 
   const limit = parseSummaryLimit(limitValue);
   const project = await getOwnedProjectOrThrow(projectId, userId);
@@ -205,7 +238,8 @@ export const summarizeLatestPullRequests = async (
 
     const summary = await generateSummaryFromPrompt(
       PULLS_OVERVIEW_SYSTEM_PROMPT,
-      `${buildPullRequestsPrompt(latestPullRequests, project.owner, project.name)}\n\n${PULLS_OVERVIEW_RETURN_FORMAT}`
+      `${buildPullRequestsPrompt(latestPullRequests, project.owner, project.name)}\n\n${PULLS_OVERVIEW_RETURN_FORMAT}`,
+      aiConfig
     );
 
     return {
@@ -224,5 +258,113 @@ export const summarizeLatestPullRequests = async (
     }
 
     mapAiError(error, 'Failed to generate pull requests summary');
+  }
+};
+
+export const reviewRecentCode = async (
+  projectId: string,
+  userId: string,
+  branchName: string
+) => {
+  const aiConfig = await getUserAiConfig(userId);
+  ensureAiConfiguredOrThrow(aiConfig);
+
+  if (!branchName) {
+    throw new AppError(400, 'branchName is required');
+  }
+
+  const project = await getOwnedProjectOrThrow(projectId, userId);
+  const provider = detectProviderFromRepositoryUrl(project.url);
+
+  try {
+    const { diffs, commitsAnalyzed } = await fetchRecentDiffs(
+      provider,
+      project.owner,
+      project.name,
+      branchName,
+      CODE_REVIEW_COMMITS_LIMIT,
+      CODE_REVIEW_MAX_DIFF_LENGTH
+    );
+
+    if (!diffs || commitsAnalyzed === 0) {
+      throw new AppError(404, 'No commit diffs found for this branch');
+    }
+
+    const rawResponse = await generateSummaryFromPrompt(
+      CODE_REVIEW_SYSTEM_PROMPT,
+      `Repository: ${project.owner}/${project.name}\nBranch: ${branchName}\n\nRecent changes (diff):\n${diffs}\n\n${CODE_REVIEW_RETURN_FORMAT}`,
+      aiConfig,
+      CODE_REVIEW_MAX_TOKENS
+    );
+
+    let findings: unknown[];
+    try {
+      findings = JSON.parse(rawResponse);
+    } catch {
+      findings = [];
+    }
+
+    if (!Array.isArray(findings)) {
+      findings = [];
+    }
+
+    return {
+      branchName,
+      commitsAnalyzed,
+      findings,
+    };
+  } catch (error: unknown) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+
+    if (axios.isAxiosError(error)) {
+      mapProviderError(
+        provider,
+        error,
+        'Failed to review code',
+        `Branch or repository not found on ${getProviderLabel(provider)}`,
+      );
+    }
+
+    mapAiError(error, 'Failed to review code');
+  }
+};
+
+export const suggestCodeFix = async (
+  projectId: string,
+  userId: string,
+  finding: { file: string; snippet: string; description: string }
+) => {
+  const aiConfig = await getUserAiConfig(userId);
+  ensureAiConfiguredOrThrow(aiConfig);
+
+  await getOwnedProjectOrThrow(projectId, userId);
+
+  if (!finding.snippet || !finding.description) {
+    throw new AppError(400, 'snippet and description are required');
+  }
+
+  try {
+    const rawResponse = await generateSummaryFromPrompt(
+      CODE_FIX_SYSTEM_PROMPT,
+      `File: ${finding.file}\n\nProblematic code:\n${finding.snippet}\n\nProblem: ${finding.description}\n\n${CODE_FIX_RETURN_FORMAT}`,
+      aiConfig,
+      CODE_FIX_MAX_TOKENS
+    );
+
+    let result: { improvedCode?: string; explanation?: string };
+    try {
+      result = JSON.parse(rawResponse);
+    } catch {
+      result = { improvedCode: rawResponse, explanation: '' };
+    }
+
+    return {
+      improvedCode: result.improvedCode || rawResponse,
+      explanation: result.explanation || '',
+    };
+  } catch (error: unknown) {
+    mapAiError(error, 'Failed to generate code fix suggestion');
   }
 };

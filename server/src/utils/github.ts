@@ -245,3 +245,13 @@ export const fetchCommitsForBranch = async (
 
   return res.data;
 };
+
+export const fetchCommitDiff = async (owner: string, repo: string, sha: string): Promise<string> => {
+  const res = await githubClient.get<string>(`/repos/${owner}/${repo}/commits/${sha}`, {
+    headers: { Accept: 'application/vnd.github.diff' },
+    responseType: 'text',
+    transformResponse: [(data: string) => data],
+  });
+
+  return res.data;
+};

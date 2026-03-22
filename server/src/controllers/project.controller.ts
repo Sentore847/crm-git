@@ -14,6 +14,8 @@ import {
   updateProjectForUser,
 } from '../services/project.service';
 import {
+  reviewRecentCode,
+  suggestCodeFix,
   summarizeLatestBranchChanges,
   summarizeLatestIssues,
   summarizeLatestPullRequests,
@@ -82,6 +84,26 @@ export const askLatestPullRequestsOverview = asyncHandler(async (req: AuthReques
   const { limit } = req.body as { limit?: unknown };
   const summary = await summarizeLatestPullRequests(req.params.id, req.userId!, limit);
   res.json(summary);
+});
+
+export const askCodeReview = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { branchName } = req.body as { branchName?: string };
+  const result = await reviewRecentCode(req.params.id, req.userId!, branchName || '');
+  res.json(result);
+});
+
+export const askCodeFix = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { file, snippet, description } = req.body as {
+    file?: string;
+    snippet?: string;
+    description?: string;
+  };
+  const result = await suggestCodeFix(req.params.id, req.userId!, {
+    file: file || '',
+    snippet: snippet || '',
+    description: description || '',
+  });
+  res.json(result);
 });
 
 export const deleteProject = asyncHandler(async (req: AuthRequest, res: Response) => {

@@ -12,6 +12,11 @@ model User {
   id        String    @id @default(uuid())
   email     String    @unique
   password  String
+  aiProvider String   @default("openai")
+  aiApiKey   String?
+  aiModel    String?
+  aiBaseUrl  String?
+  hideIntro  Boolean  @default(false)
   createdAt DateTime  @default(now())
   projects  Project[]
 
