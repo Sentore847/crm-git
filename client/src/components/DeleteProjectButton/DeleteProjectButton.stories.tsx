@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn, within, expect } from '@storybook/test';
-import DeleteProjectButton from '../DeleteProjectButton';
+import DeleteProjectButton from './DeleteProjectButton';
 
 const meta: Meta<typeof DeleteProjectButton> = {
   title: 'Components/DeleteProjectButton',

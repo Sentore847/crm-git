@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn, within, expect, userEvent } from '@storybook/test';
-import ProjectCard from '../ProjectCard';
-import type { Project } from '../../types/project.types';
+import ProjectCard from './ProjectCard';
+import type { Project } from '@/types/project.types';
 
 const githubProject: Project = {
   id: 'proj-1',

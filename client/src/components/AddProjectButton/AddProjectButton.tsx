@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import type { Project } from '../types/project.types';
-import api from '../services/api';
+import type { Project } from '@/types/project.types';
+import api from '@/services/api';
 import axios from 'axios';
 
 interface Props {
@@ -55,7 +55,7 @@ const AddProjectModal = ({ onClose, onAdd }: Props) => {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
       onAdd(res.data);
       onClose();
@@ -73,8 +73,8 @@ const AddProjectModal = ({ onClose, onAdd }: Props) => {
   };
 
   return (
-    <div 
-      className="d-flex align-items-center justify-content-center position-fixed top-0 start-0 w-100 h-100" 
+    <div
+      className="d-flex align-items-center justify-content-center position-fixed top-0 start-0 w-100 h-100"
       style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}
     >
       <div className="auth-card p-4 rounded shadow" style={{ maxWidth: 400, width: '100%' }}>
@@ -87,14 +87,12 @@ const AddProjectModal = ({ onClose, onAdd }: Props) => {
             placeholder="e.g. facebook/react, gitlab:gitlab-org/gitlab, bitbucket:workspace/repo"
             {...register('repoPath', {
               required: 'Project path is required',
-              validate: value =>
+              validate: (value) =>
                 isValidRepositoryInput(value) ||
                 'Invalid path. Use owner/repo, gitlab:group/repo, bitbucket:workspace/repo or HTTPS URL.',
             })}
           />
-          {errors.repoPath && (
-            <div className="invalid-feedback">{errors.repoPath.message}</div>
-          )}
+          {errors.repoPath && <div className="invalid-feedback">{errors.repoPath.message}</div>}
           <div className="d-flex justify-content-end">
             <button
               type="button"

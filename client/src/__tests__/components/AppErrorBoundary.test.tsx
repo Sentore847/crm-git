@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import AppErrorBoundary from '../../components/AppErrorBoundary';
+import AppErrorBoundary from '@/components/AppErrorBoundary';
 
 const ThrowError = ({ message }: { message: string }) => {
   throw new Error(message);
@@ -15,7 +15,7 @@ describe('AppErrorBoundary', () => {
     render(
       <AppErrorBoundary>
         <div>Normal content</div>
-      </AppErrorBoundary>
+      </AppErrorBoundary>,
     );
     expect(screen.getByText('Normal content')).toBeInTheDocument();
   });
@@ -24,7 +24,7 @@ describe('AppErrorBoundary', () => {
     render(
       <AppErrorBoundary>
         <ThrowError message="Test error" />
-      </AppErrorBoundary>
+      </AppErrorBoundary>,
     );
     expect(screen.getByText('Application error')).toBeInTheDocument();
     expect(screen.getByText('Test error')).toBeInTheDocument();
@@ -34,7 +34,7 @@ describe('AppErrorBoundary', () => {
     render(
       <AppErrorBoundary>
         <ThrowError message="crash" />
-      </AppErrorBoundary>
+      </AppErrorBoundary>,
     );
     expect(screen.getByRole('button', { name: /reload/i })).toBeInTheDocument();
   });
@@ -47,7 +47,7 @@ describe('AppErrorBoundary', () => {
     render(
       <AppErrorBoundary>
         <ThrowEmptyError />
-      </AppErrorBoundary>
+      </AppErrorBoundary>,
     );
     expect(screen.getByText('Application error')).toBeInTheDocument();
   });

@@ -18,7 +18,7 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-import api from '../../services/api';
+import api from '@/services/api';
 
 describe('Login Page', () => {
   const mockOnLogin = vi.fn();
@@ -31,7 +31,7 @@ describe('Login Page', () => {
     render(
       <MemoryRouter>
         <Login onLogin={mockOnLogin} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
   it('should render login form', () => {

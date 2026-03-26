@@ -23,43 +23,24 @@
 
 ---
 
-## Screenshots
-
-<table>
-  <tr>
-    <td align="center"><b>Projects Dashboard</b></td>
-    <td align="center"><b>Add Repository</b></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/step1-projects.png" alt="Projects Dashboard" width="450"/></td>
-    <td><img src="docs/screenshots/step2-add-project.png" alt="Add Repository Modal" width="450"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Repository Insights</b></td>
-    <td align="center"><b>AI Settings</b></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/step3-insights.png" alt="Repository Insights" width="450"/></td>
-    <td><img src="docs/screenshots/step4-settings.png" alt="AI Settings" width="450"/></td>
-  </tr>
-</table>
-
----
-
 ## Features
 
 ### Repository Management
+
 - **Multi-platform support** — GitHub, GitLab, Bitbucket
 - **Flexible input** — paste a full URL or use shorthand (`owner/repo`, `gitlab:group/repo`, `bitbucket:workspace/repo`)
 - **Auto-fetched metrics** — stars, forks, open issues, creation date
 - **CRUD operations** — add, view, update, delete tracked repositories
+- **Favorites** — mark repositories as favorites for quick access
 
 ### Repository Insights
+
 - **Branches** — all branches with last commit info, sortable by date
 - **Issues** — full issue list, sortable by newest/oldest
 - **Pull Requests** — complete PR tracking, sortable by update date
 
 ### AI Analysis
+
 - **Branch Summary** — analyze recent commits on any branch
 - **Issues Overview** — AI-generated summary of latest issues with key themes
 - **PR Overview** — AI summary of recent PRs with risk assessment
@@ -67,17 +48,20 @@
 - **Code Fix** — AI suggests improvements for code snippets
 
 ### AI Providers
-| Provider | Model (default) |
-|----------|----------------|
-| OpenAI | `gpt-4o-mini` |
-| Google Gemini | `gemini-2.0-flash` |
-| DeepSeek | `deepseek-chat` |
-| OpenRouter | `openai/gpt-4o-mini` |
-| Custom | Any OpenAI-compatible endpoint |
+
+| Provider      | Model (default)                |
+| ------------- | ------------------------------ |
+| OpenAI        | `gpt-4o-mini`                  |
+| Google Gemini | `gemini-2.0-flash`             |
+| DeepSeek      | `deepseek-chat`                |
+| OpenRouter    | `openai/gpt-4o-mini`           |
+| Custom        | Any OpenAI-compatible endpoint |
 
 ### UI/UX
+
 - **Theme switching** — System / Light / Dark modes
 - **Onboarding guide** — interactive intro for new users
+- **Error boundary** — graceful error handling with recovery
 - **Responsive design** — Bootstrap 5
 - **Pagination** — paginated project list
 
@@ -94,6 +78,7 @@ graph TB
 
     subgraph Server["Backend — Express + TypeScript"]
         ROUTES["REST API Routes"]
+        MW["Middlewares"]
         CONTROLLERS["Controllers"]
         SERVICES["Services"]
         AI_SERVICE["AI Service"]
@@ -114,7 +99,8 @@ graph TB
 
     UI --> API_CLIENT
     API_CLIENT -->|"HTTP/JSON"| ROUTES
-    ROUTES --> CONTROLLERS
+    ROUTES --> MW
+    MW -->|"auth, validate, rate-limit"| CONTROLLERS
     CONTROLLERS --> SERVICES
     CONTROLLERS --> AI_SERVICE
     SERVICES --> PRISMA
@@ -153,6 +139,7 @@ erDiagram
         int forks
         int issues
         int createdAt
+        boolean isFavorite
         uuid userId FK
     }
 
@@ -163,59 +150,71 @@ erDiagram
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | React 19, TypeScript, Vite, Bootstrap 5, React Router, React Hook Form, Axios |
-| **Backend** | Node.js, Express 5, TypeScript, Prisma ORM |
-| **Database** | PostgreSQL 15 |
-| **Auth** | JWT + bcrypt |
-| **AI** | OpenAI-compatible API (multi-provider) |
-| **Testing** | Vitest + Testing Library (client), Jest + Supertest (server), Playwright (e2e) |
-| **Docs** | Storybook |
-| **DevOps** | Docker + Docker Compose |
+| Layer             | Technology                                                                        |
+| ----------------- | --------------------------------------------------------------------------------- |
+| **Frontend**      | React 19, TypeScript, Vite 7, Bootstrap 5, React Router 7, React Hook Form, Axios |
+| **Backend**       | Node.js, Express 5, TypeScript, Prisma 6 ORM                                      |
+| **Database**      | PostgreSQL 15                                                                     |
+| **Auth**          | JWT + bcrypt                                                                      |
+| **AI**            | OpenAI-compatible API (multi-provider)                                            |
+| **Validation**    | Zod                                                                               |
+| **API Docs**      | Swagger / OpenAPI (swagger-jsdoc + swagger-ui-express)                            |
+| **Logging**       | Pino + pino-http                                                                  |
+| **Rate Limiting** | express-rate-limit                                                                |
+| **Testing**       | Vitest + Testing Library (client), Jest 30 + Supertest (server), Playwright (e2e) |
+| **Docs**          | Storybook 8                                                                       |
+| **Code Quality**  | Prettier, Husky, lint-staged, ESLint                                              |
+| **DevOps**        | Docker + Docker Compose                                                           |
 
 ---
 
 ## API Reference
 
 ### Auth
-| Method | Endpoint | Description |
-|--------|----------|-------------|
+
+| Method | Endpoint           | Description         |
+| ------ | ------------------ | ------------------- |
 | `POST` | `/api/auth/signup` | Register a new user |
-| `POST` | `/api/auth/login` | Login, returns JWT |
+| `POST` | `/api/auth/login`  | Login, returns JWT  |
 
 ### User
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/user/settings` | Get user settings |
-| `PUT` | `/api/user/settings` | Update AI provider, model, API key |
+
+| Method | Endpoint             | Description                        |
+| ------ | -------------------- | ---------------------------------- |
+| `GET`  | `/api/user/settings` | Get user settings                  |
+| `PUT`  | `/api/user/settings` | Update AI provider, model, API key |
 
 ### Projects
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/projects` | List projects (paginated) |
-| `POST` | `/api/projects` | Add a repository |
-| `GET` | `/api/projects/:id/details` | Full project details |
-| `PATCH` | `/api/projects/:id/update` | Refresh project data from API |
-| `DELETE` | `/api/projects/:id` | Delete a project |
+
+| Method   | Endpoint                     | Description                   |
+| -------- | ---------------------------- | ----------------------------- |
+| `GET`    | `/api/projects`              | List projects (paginated)     |
+| `POST`   | `/api/projects`              | Add a repository              |
+| `GET`    | `/api/projects/:id/details`  | Full project details          |
+| `PATCH`  | `/api/projects/:id/update`   | Refresh project data from API |
+| `PATCH`  | `/api/projects/:id/favorite` | Toggle favorite status        |
+| `DELETE` | `/api/projects/:id`          | Delete a project              |
 
 ### Insights
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/projects/:id/branches` | List branches with last commit |
-| `GET` | `/api/projects/:id/issues` | List issues |
-| `GET` | `/api/projects/:id/pulls` | List pull requests |
+
+| Method | Endpoint                     | Description                    |
+| ------ | ---------------------------- | ------------------------------ |
+| `GET`  | `/api/projects/:id/branches` | List branches with last commit |
+| `GET`  | `/api/projects/:id/issues`   | List issues                    |
+| `GET`  | `/api/projects/:id/pulls`    | List pull requests             |
 
 ### AI Analysis
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/projects/:id/ai/branch-summary` | AI summary of branch commits |
-| `POST` | `/api/projects/:id/ai/issues-summary` | AI overview of latest issues |
-| `POST` | `/api/projects/:id/ai/pulls-summary` | AI overview of latest PRs |
-| `POST` | `/api/projects/:id/ai/code-review` | AI code review of recent commits |
-| `POST` | `/api/projects/:id/ai/code-fix` | AI fix suggestions for code |
+
+| Method | Endpoint                              | Description                      |
+| ------ | ------------------------------------- | -------------------------------- |
+| `POST` | `/api/projects/:id/ai/branch-summary` | AI summary of branch commits     |
+| `POST` | `/api/projects/:id/ai/issues-summary` | AI overview of latest issues     |
+| `POST` | `/api/projects/:id/ai/pulls-summary`  | AI overview of latest PRs        |
+| `POST` | `/api/projects/:id/ai/code-review`    | AI code review of recent commits |
+| `POST` | `/api/projects/:id/ai/code-fix`       | AI fix suggestions for code      |
 
 > All endpoints except auth require a `Bearer` JWT token in the `Authorization` header.
+> AI endpoints are rate-limited. API docs available at `/api-docs` (Swagger UI).
 
 ---
 
@@ -231,12 +230,14 @@ docker compose up --build
 ```
 
 The app will be available at:
+
 - **Frontend:** http://localhost:5173
 - **Backend:** http://localhost:5001
+- **API Docs:** http://localhost:5001/api-docs
 
 ### Local Development
 
-**Prerequisites:** Node.js 20+, PostgreSQL 15+
+**Prerequisites:** Node.js 22+, PostgreSQL 15+
 
 ```bash
 # Clone
@@ -262,7 +263,7 @@ npm run dev
 ```env
 # Database
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=12345
+POSTGRES_PASSWORD=CHANGE_ME
 POSTGRES_DB=github_crm
 
 # Ports
@@ -270,10 +271,13 @@ PORT_BACKEND=5001
 PORT_FRONTEND=5173
 
 # Auth
-JWT_SECRET=your_jwt_secret
+JWT_SECRET=CHANGE_ME_generate_with_openssl_rand_hex_32
 
 # Frontend
 VITE_API_URL=http://localhost:5001/api
+
+# CORS (comma-separated for multiple origins)
+CORS_ORIGIN=http://localhost:5173
 
 # Repository tokens (optional, recommended)
 GITHUB_TOKEN=your_github_token
@@ -292,33 +296,42 @@ OPENAI_MODEL=gpt-4o-mini          # optional
 
 ```
 repository-projects-crm/
-├── client/                     # React frontend
+├── client/                          # React frontend
 │   ├── src/
-│   │   ├── components/         # UI components
-│   │   │   ├── ProjectCard     # Repository card with insights
-│   │   │   ├── AddProject      # Add repository modal
-│   │   │   ├── Settings        # AI provider settings
-│   │   │   └── IntroGuide      # Onboarding wizard
-│   │   ├── pages/              # Login, Signup, Projects
-│   │   ├── services/           # Axios API client
-│   │   ├── types/              # TypeScript interfaces
-│   │   └── __tests__/          # Unit tests (Vitest)
-│   └── .storybook/             # Storybook config
+│   │   ├── components/              # UI components (barrel pattern)
+│   │   │   ├── AddProjectButton/    # Add repository modal
+│   │   │   ├── AppErrorBoundary/    # Error boundary with recovery
+│   │   │   ├── DeleteProjectButton/ # Delete confirmation
+│   │   │   ├── IntroGuide/          # Onboarding wizard
+│   │   │   ├── LogoutButton/        # Logout action
+│   │   │   ├── ProjectCard/         # Repository card with insights
+│   │   │   ├── SettingsButton/      # AI provider settings
+│   │   │   ├── UpdateProjectButton/ # Refresh project data
+│   │   │   └── index.ts             # Barrel export
+│   │   ├── pages/                   # Login, Signup, Projects
+│   │   │   └── __stories__/         # Page-level Storybook stories
+│   │   ├── services/                # Axios API client
+│   │   ├── styles/                  # CSS modules
+│   │   ├── types/                   # TypeScript interfaces
+│   │   └── __tests__/               # Unit tests (Vitest)
+│   └── .storybook/                  # Storybook config
 │
-├── server/                     # Express backend
+├── server/                          # Express backend
 │   ├── src/
-│   │   ├── controllers/        # Request handlers
-│   │   ├── services/           # Business logic & AI
-│   │   ├── routes/             # API route definitions
-│   │   ├── utils/              # GitHub/GitLab/BB clients, JWT, AI
-│   │   ├── middlewares/        # Auth middleware
-│   │   ├── constants/          # AI prompts, configs
-│   │   └── __tests__/          # Unit tests (Jest)
-│   └── prisma/                 # DB schema & migrations
+│   │   ├── config/                  # env, logger (Pino), swagger
+│   │   ├── constants/               # AI prompts, project configs
+│   │   ├── controllers/             # Request handlers
+│   │   ├── middlewares/             # Auth, error, rate-limit, validate
+│   │   ├── routes/                  # API route definitions
+│   │   ├── schemas/                 # Zod validation schemas
+│   │   ├── services/                # Business logic & AI service
+│   │   ├── utils/                   # JWT, Prisma, AI client, providers, errors
+│   │   └── __tests__/               # Unit & integration tests (Jest)
+│   └── prisma/                      # DB schema & migrations
 │
-├── e2e/                        # Playwright E2E tests
-├── docker-compose.yml          # Multi-container setup
-└── .env.example                # Environment template
+├── e2e/                             # Playwright E2E tests
+├── docker-compose.yml               # Multi-container setup
+└── .env.example                     # Environment template
 ```
 
 ---

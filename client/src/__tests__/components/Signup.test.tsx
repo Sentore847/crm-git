@@ -19,7 +19,7 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-import api from '../../services/api';
+import api from '@/services/api';
 
 describe('Signup Page', () => {
   beforeEach(() => {
@@ -30,7 +30,7 @@ describe('Signup Page', () => {
     render(
       <MemoryRouter>
         <Signup />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
   it('should render signup form', () => {

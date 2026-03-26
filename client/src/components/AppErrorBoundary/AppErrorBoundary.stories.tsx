@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { within, expect } from '@storybook/test';
-import AppErrorBoundary from '../AppErrorBoundary';
+import AppErrorBoundary from './AppErrorBoundary';
 
 const meta: Meta<typeof AppErrorBoundary> = {
   title: 'Components/AppErrorBoundary',

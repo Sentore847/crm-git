@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
-import api from '../services/api';
+import api from '@/services/api';
 
 interface SettingsResponse {
   aiProvider: string;
@@ -11,11 +11,11 @@ interface SettingsResponse {
 }
 
 const AI_PROVIDERS: Record<string, { label: string; defaultModel: string }> = {
-  openai:     { label: 'OpenAI',                    defaultModel: 'gpt-4o-mini' },
-  gemini:     { label: 'Google Gemini',              defaultModel: 'gemini-2.0-flash' },
-  deepseek:   { label: 'DeepSeek',                   defaultModel: 'deepseek-chat' },
-  openrouter: { label: 'OpenRouter',                 defaultModel: 'openai/gpt-4o-mini' },
-  custom:     { label: 'Custom (OpenAI-compatible)',  defaultModel: '' },
+  openai: { label: 'OpenAI', defaultModel: 'gpt-4o-mini' },
+  gemini: { label: 'Google Gemini', defaultModel: 'gemini-2.0-flash' },
+  deepseek: { label: 'DeepSeek', defaultModel: 'deepseek-chat' },
+  openrouter: { label: 'OpenRouter', defaultModel: 'openai/gpt-4o-mini' },
+  custom: { label: 'Custom (OpenAI-compatible)', defaultModel: '' },
 };
 
 const SettingsButton = () => {
@@ -141,7 +141,7 @@ const SettingsButton = () => {
           fill="none"
           stroke="currentColor"
           strokeWidth="1.8"
-          style={{ width: 18, height: 18 }}
+          style={{ width: 18, height: 18, display: 'block' }}
         >
           <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
           <circle cx="12" cy="12" r="3" />
@@ -152,7 +152,9 @@ const SettingsButton = () => {
         <div
           className="d-flex align-items-center justify-content-center position-fixed top-0 start-0 w-100 h-100"
           style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}
-          onClick={e => { if (e.target === e.currentTarget) closeModal(); }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeModal();
+          }}
         >
           <div className="auth-card p-4 rounded shadow" style={{ maxWidth: 480, width: '100%' }}>
             <h5 className="mb-3">Settings</h5>
@@ -166,11 +168,13 @@ const SettingsButton = () => {
                   <select
                     className="form-select"
                     value={provider}
-                    onChange={e => setProvider(e.target.value)}
+                    onChange={(e) => setProvider(e.target.value)}
                     disabled={saving}
                   >
                     {Object.entries(AI_PROVIDERS).map(([key, cfg]) => (
-                      <option key={key} value={key}>{cfg.label}</option>
+                      <option key={key} value={key}>
+                        {cfg.label}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -187,7 +191,7 @@ const SettingsButton = () => {
                     className="form-control"
                     placeholder="Enter your API key..."
                     value={apiKey}
-                    onChange={e => setApiKey(e.target.value)}
+                    onChange={(e) => setApiKey(e.target.value)}
                     disabled={saving}
                   />
                 </div>
@@ -199,7 +203,7 @@ const SettingsButton = () => {
                     className="form-control"
                     placeholder={currentProviderConfig.defaultModel || 'Enter model name...'}
                     value={model}
-                    onChange={e => setModel(e.target.value)}
+                    onChange={(e) => setModel(e.target.value)}
                     disabled={saving}
                   />
                   <div className="form-text">
@@ -217,7 +221,7 @@ const SettingsButton = () => {
                       className="form-control"
                       placeholder="https://api.example.com/v1"
                       value={baseUrl}
-                      onChange={e => setBaseUrl(e.target.value)}
+                      onChange={(e) => setBaseUrl(e.target.value)}
                       disabled={saving}
                     />
                     <div className="form-text">
@@ -234,7 +238,7 @@ const SettingsButton = () => {
                     className="form-check-input"
                     id="settings-show-intro"
                     checked={!hideIntro}
-                    onChange={e => void handleIntroToggle(e.target.checked)}
+                    onChange={(e) => void handleIntroToggle(e.target.checked)}
                     disabled={saving}
                   />
                   <label className="form-check-label" htmlFor="settings-show-intro">

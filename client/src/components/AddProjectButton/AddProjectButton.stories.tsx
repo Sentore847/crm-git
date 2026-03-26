@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn, within, expect, userEvent } from '@storybook/test';
-import AddProjectModal from '../AddProjectButton';
+import AddProjectModal from './AddProjectButton';
 
 const meta: Meta<typeof AddProjectModal> = {
   title: 'Components/AddProjectModal',

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn, within, expect, userEvent } from '@storybook/test';
-import IntroGuide from '../IntroGuide';
+import IntroGuide from './IntroGuide';
 
 const meta: Meta<typeof IntroGuide> = {
   title: 'Components/IntroGuide',

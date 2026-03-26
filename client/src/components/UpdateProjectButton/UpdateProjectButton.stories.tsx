@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn, within, expect } from '@storybook/test';
-import UpdateProjectButton from '../UpdateProjectButton';
+import UpdateProjectButton from './UpdateProjectButton';
 
 const meta: Meta<typeof UpdateProjectButton> = {
   title: 'Components/UpdateProjectButton',

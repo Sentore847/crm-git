@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import axios from 'axios';
-import type { Project } from '../types/project.types';
+import type { Project } from '@/types/project.types';
 import type {
   BranchesResponse,
   BranchInfo,
@@ -15,15 +15,16 @@ import type {
   PullRequestInfo,
   PullRequestsResponse,
   PullRequestsSummaryResponse,
-} from '../types/project-details.types';
-import api from '../services/api';
-import DeleteProjectButton from './DeleteProjectButton';
-import UpdateProjectButton from './UpdateProjectButton';
+} from '@/types/project-details.types';
+import api from '@/services/api';
+import DeleteProjectButton from '@/components/DeleteProjectButton';
+import UpdateProjectButton from '@/components/UpdateProjectButton';
 
 interface Props {
   project: Project;
   onUpdate: (project: Project) => void;
   onDelete: (id: string) => void;
+  onToggleFavorite: (id: string, isFavorite: boolean) => void;
 }
 
 type InsightsTab = 'branches' | 'issues' | 'pulls' | 'review';
@@ -35,7 +36,13 @@ type RepoPlatform = 'github' | 'gitlab' | 'bitbucket' | 'unknown';
 const INSIGHTS_LIMIT = 80;
 
 const IconBase = ({ children, className }: { children: ReactNode; className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+  >
     {children}
   </svg>
 );
@@ -200,7 +207,7 @@ const getErrorMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
-const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
+const ProjectCard = ({ project, onUpdate, onDelete, onToggleFavorite }: Props) => {
   const repoPlatform = getRepoPlatformFromUrl(project.url);
   const [showInsights, setShowInsights] = useState(false);
   const [activeTab, setActiveTab] = useState<InsightsTab>('branches');
@@ -247,8 +254,17 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
   const [reviewFindings, setReviewFindings] = useState<CodeReviewFinding[]>([]);
   const [reviewCommitsAnalyzed, setReviewCommitsAnalyzed] = useState(0);
   const [fixLoadingIndex, setFixLoadingIndex] = useState<number | null>(null);
-  const [fixResults, setFixResults] = useState<Record<number, { improvedCode: string; explanation: string }>>({});
+  const [fixResults, setFixResults] = useState<
+    Record<number, { improvedCode: string; explanation: string }>
+  >({});
   const [fixError, setFixError] = useState('');
+
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const handleCopy = async (text: string, key: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 1500);
+  };
 
   const formatProjectDate = (timestamp: number) => new Date(timestamp * 1000).toUTCString();
   const formatIsoDate = (value?: string) => (value ? new Date(value).toUTCString() : '-');
@@ -263,26 +279,26 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
       });
 
       setBranches(res.data.branches);
-      setSelectedBranch(prev => {
+      setSelectedBranch((prev) => {
         if (res.data.branches.length === 0) {
           return '';
         }
 
-        if (prev && res.data.branches.some(branch => branch.name === prev)) {
+        if (prev && res.data.branches.some((branch) => branch.name === prev)) {
           return prev;
         }
 
         return res.data.branches[0].name;
       });
-      setReviewBranch(prev => {
-        if (prev && res.data.branches.some(branch => branch.name === prev)) {
+      setReviewBranch((prev) => {
+        if (prev && res.data.branches.some((branch) => branch.name === prev)) {
           return prev;
         }
 
         return res.data.branches.length > 0 ? res.data.branches[0].name : '';
       });
 
-      setLoadedTabs(prev => ({ ...prev, branches: true }));
+      setLoadedTabs((prev) => ({ ...prev, branches: true }));
     } catch (error) {
       setBranchesError(getErrorMessage(error, 'Failed to fetch branches'));
     } finally {
@@ -300,7 +316,7 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
       });
 
       setIssues(res.data.issues);
-      setLoadedTabs(prev => ({ ...prev, issues: true }));
+      setLoadedTabs((prev) => ({ ...prev, issues: true }));
     } catch (error) {
       setIssuesError(getErrorMessage(error, 'Failed to fetch issues'));
     } finally {
@@ -318,7 +334,7 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
       });
 
       setPullRequests(res.data.pullRequests);
-      setLoadedTabs(prev => ({ ...prev, pulls: true }));
+      setLoadedTabs((prev) => ({ ...prev, pulls: true }));
     } catch (error) {
       setPullsError(getErrorMessage(error, 'Failed to fetch pull requests'));
     } finally {
@@ -398,11 +414,14 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
     setBranchAiError('');
 
     try {
-      const res = await api.post<BranchSummaryResponse>(`/projects/${project.id}/ai/branch-summary`, {
-        branchName: selectedBranch,
-      });
+      const res = await api.post<BranchSummaryResponse>(
+        `/projects/${project.id}/ai/branch-summary`,
+        {
+          branchName: selectedBranch,
+        },
+      );
 
-      setBranchAiSummaries(prev => ({
+      setBranchAiSummaries((prev) => ({
         ...prev,
         [selectedBranch]: res.data.summary,
       }));
@@ -418,9 +437,12 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
     setIssuesAiError('');
 
     try {
-      const res = await api.post<IssuesSummaryResponse>(`/projects/${project.id}/ai/issues-summary`, {
-        limit: 10,
-      });
+      const res = await api.post<IssuesSummaryResponse>(
+        `/projects/${project.id}/ai/issues-summary`,
+        {
+          limit: 10,
+        },
+      );
 
       setIssuesAiSummary(res.data.summary);
     } catch (error) {
@@ -435,9 +457,12 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
     setPullsAiError('');
 
     try {
-      const res = await api.post<PullRequestsSummaryResponse>(`/projects/${project.id}/ai/pulls-summary`, {
-        limit: 10,
-      });
+      const res = await api.post<PullRequestsSummaryResponse>(
+        `/projects/${project.id}/ai/pulls-summary`,
+        {
+          limit: 10,
+        },
+      );
 
       setPullsAiSummary(res.data.summary);
     } catch (error) {
@@ -484,7 +509,7 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
         description: finding.description,
       });
 
-      setFixResults(prev => ({
+      setFixResults((prev) => ({
         ...prev,
         [index]: { improvedCode: res.data.improvedCode, explanation: res.data.explanation },
       }));
@@ -506,10 +531,29 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
             <h5 className="card-title mb-0 repo-title">
               {project.owner} / {project.name}
             </h5>
+            <button
+              type="button"
+              className={`favorite-btn${project.isFavorite ? ' active' : ''}`}
+              onClick={() => onToggleFavorite(project.id, project.isFavorite)}
+              aria-label={project.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              title={project.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill={project.isFavorite ? 'currentColor' : 'none'}
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="favorite-icon"
+              >
+                <path d="m12 3.6 2.4 4.86 5.36.78-3.88 3.78.92 5.34L12 15.82l-4.8 2.54.92-5.34-3.88-3.78 5.36-.78z" />
+              </svg>
+            </button>
           </div>
-          <a href={project.url} target="_blank" rel="noopener noreferrer" className="repo-link">
-            {project.url}
-          </a>
+          <span className="repo-link-wrap">
+            <a href={project.url} target="_blank" rel="noopener noreferrer" className="repo-link">
+              {project.url}
+            </a>
+          </span>
         </div>
 
         <div className="metrics-grid mb-3">
@@ -600,7 +644,9 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
                     className="form-select form-select-sm"
                     style={{ width: 220 }}
                     value={branchSortMode}
-                    onChange={event => void handleBranchSortChange(event.target.value as BranchSortMode)}
+                    onChange={(event) =>
+                      void handleBranchSortChange(event.target.value as BranchSortMode)
+                    }
                   >
                     <option value="latest">Latest branches first</option>
                     <option value="oldest">Oldest branches first</option>
@@ -611,10 +657,10 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
                       className="form-select form-select-sm"
                       style={{ width: 280 }}
                       value={selectedBranch}
-                      onChange={event => setSelectedBranch(event.target.value)}
+                      onChange={(event) => setSelectedBranch(event.target.value)}
                     >
                       {branches.length === 0 && <option value="">No branches loaded</option>}
-                      {branches.map(branch => (
+                      {branches.map((branch) => (
                         <option key={branch.name} value={branch.name}>
                           {branch.name}
                         </option>
@@ -635,7 +681,23 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
                 {branchesError && <div className="alert alert-danger py-2">{branchesError}</div>}
                 {branchAiError && <div className="alert alert-warning py-2">{branchAiError}</div>}
                 {selectedBranch && branchAiSummaries[selectedBranch] && (
-                  <div className="alert alert-info ai-summary-box">{branchAiSummaries[selectedBranch]}</div>
+                  <div className="position-relative">
+                    <div className="alert alert-info ai-summary-box">
+                      {branchAiSummaries[selectedBranch]}
+                    </div>
+                    <button
+                      type="button"
+                      className="copy-btn"
+                      onClick={() =>
+                        void handleCopy(
+                          branchAiSummaries[selectedBranch],
+                          `branch-${selectedBranch}`,
+                        )
+                      }
+                    >
+                      {copiedKey === `branch-${selectedBranch}` ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
                 )}
 
                 <div className="table-responsive insights-scroll">
@@ -653,7 +715,10 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
                         <tr>
                           <td colSpan={4} className="table-loader-cell">
                             <div className="table-loader-wrap">
-                              <div className="spinner-border spinner-border-sm text-secondary" role="status" />
+                              <div
+                                className="spinner-border spinner-border-sm text-secondary"
+                                role="status"
+                              />
                             </div>
                           </td>
                         </tr>
@@ -665,7 +730,7 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
                           </td>
                         </tr>
                       )}
-                      {branches.map(branch => (
+                      {branches.map((branch) => (
                         <tr key={branch.name}>
                           <td>
                             <code>{branch.name}</code>
@@ -692,7 +757,9 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
                     className="form-select form-select-sm"
                     style={{ width: 220 }}
                     value={issueSortMode}
-                    onChange={event => void handleIssueSortChange(event.target.value as IssueSortMode)}
+                    onChange={(event) =>
+                      void handleIssueSortChange(event.target.value as IssueSortMode)
+                    }
                   >
                     <option value="newest">Newest issues first</option>
                     <option value="oldest">Oldest issues first</option>
@@ -700,7 +767,7 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
 
                   <button
                     type="button"
-                    className="btn btn-outline-dark btn-sm d-flex align-items-center gap-2"
+                    className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2"
                     onClick={() => void handleIssuesAiSummary()}
                     disabled={issuesAiLoading}
                   >
@@ -711,7 +778,18 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
 
                 {issuesError && <div className="alert alert-danger py-2">{issuesError}</div>}
                 {issuesAiError && <div className="alert alert-warning py-2">{issuesAiError}</div>}
-                {issuesAiSummary && <div className="alert alert-info ai-summary-box">{issuesAiSummary}</div>}
+                {issuesAiSummary && (
+                  <div className="position-relative">
+                    <div className="alert alert-info ai-summary-box">{issuesAiSummary}</div>
+                    <button
+                      type="button"
+                      className="copy-btn"
+                      onClick={() => void handleCopy(issuesAiSummary, 'issues')}
+                    >
+                      {copiedKey === 'issues' ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                )}
 
                 <div className="table-responsive insights-scroll">
                   <table className="table table-sm align-middle insights-table">
@@ -729,7 +807,10 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
                         <tr>
                           <td colSpan={5} className="table-loader-cell">
                             <div className="table-loader-wrap">
-                              <div className="spinner-border spinner-border-sm text-secondary" role="status" />
+                              <div
+                                className="spinner-border spinner-border-sm text-secondary"
+                                role="status"
+                              />
                             </div>
                           </td>
                         </tr>
@@ -741,7 +822,7 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
                           </td>
                         </tr>
                       )}
-                      {issues.map(issue => (
+                      {issues.map((issue) => (
                         <tr key={issue.id}>
                           <td>#{issue.number}</td>
                           <td>
@@ -767,7 +848,7 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
                     className="form-select form-select-sm"
                     style={{ width: 220 }}
                     value={pullRequestSortMode}
-                    onChange={event =>
+                    onChange={(event) =>
                       void handlePullSortChange(event.target.value as PullRequestSortMode)
                     }
                   >
@@ -777,7 +858,7 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
 
                   <button
                     type="button"
-                    className="btn btn-outline-dark btn-sm d-flex align-items-center gap-2"
+                    className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2"
                     onClick={() => void handlePullRequestsAiSummary()}
                     disabled={pullsAiLoading}
                   >
@@ -788,7 +869,18 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
 
                 {pullsError && <div className="alert alert-danger py-2">{pullsError}</div>}
                 {pullsAiError && <div className="alert alert-warning py-2">{pullsAiError}</div>}
-                {pullsAiSummary && <div className="alert alert-info ai-summary-box">{pullsAiSummary}</div>}
+                {pullsAiSummary && (
+                  <div className="position-relative">
+                    <div className="alert alert-info ai-summary-box">{pullsAiSummary}</div>
+                    <button
+                      type="button"
+                      className="copy-btn"
+                      onClick={() => void handleCopy(pullsAiSummary, 'pulls')}
+                    >
+                      {copiedKey === 'pulls' ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                )}
 
                 <div className="table-responsive insights-scroll">
                   <table className="table table-sm align-middle insights-table">
@@ -806,7 +898,10 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
                         <tr>
                           <td colSpan={5} className="table-loader-cell">
                             <div className="table-loader-wrap">
-                              <div className="spinner-border spinner-border-sm text-secondary" role="status" />
+                              <div
+                                className="spinner-border spinner-border-sm text-secondary"
+                                role="status"
+                              />
                             </div>
                           </td>
                         </tr>
@@ -818,11 +913,15 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
                           </td>
                         </tr>
                       )}
-                      {pullRequests.map(pullRequest => (
+                      {pullRequests.map((pullRequest) => (
                         <tr key={pullRequest.id}>
                           <td>#{pullRequest.number}</td>
                           <td>
-                            <a href={pullRequest.html_url} target="_blank" rel="noopener noreferrer">
+                            <a
+                              href={pullRequest.html_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
                               {pullRequest.title}
                             </a>
                           </td>
@@ -844,10 +943,10 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
                     className="form-select form-select-sm"
                     style={{ width: 280 }}
                     value={reviewBranch}
-                    onChange={event => setReviewBranch(event.target.value)}
+                    onChange={(event) => setReviewBranch(event.target.value)}
                   >
                     {branches.length === 0 && <option value="">No branches loaded</option>}
-                    {branches.map(branch => (
+                    {branches.map((branch) => (
                       <option key={branch.name} value={branch.name}>
                         {branch.name}
                       </option>
@@ -869,32 +968,61 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
 
                 {reviewLoading && (
                   <div className="d-flex align-items-center gap-2 py-3">
-                    <div className="spinner-border spinner-border-sm text-secondary" role="status" />
+                    <div
+                      className="spinner-border spinner-border-sm text-secondary"
+                      role="status"
+                    />
                     <span className="text-muted">AI is analyzing recent commits...</span>
                   </div>
                 )}
 
                 {!reviewLoading && reviewFindings.length > 0 && (
                   <div>
-                    <p className="text-muted small mb-2">
-                      Found {reviewFindings.length} issue{reviewFindings.length !== 1 ? 's' : ''} in {reviewCommitsAnalyzed} commit{reviewCommitsAnalyzed !== 1 ? 's' : ''}
-                    </p>
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <p className="text-muted small mb-0">
+                        Found {reviewFindings.length} issue{reviewFindings.length !== 1 ? 's' : ''}{' '}
+                        in {reviewCommitsAnalyzed} commit{reviewCommitsAnalyzed !== 1 ? 's' : ''}
+                      </p>
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1"
+                        onClick={() => {
+                          const text = reviewFindings
+                            .map(
+                              (f, i) =>
+                                `${i + 1}. [${f.severity}] ${f.type} — ${f.file}${f.line ? `:${f.line}` : ''}\n${f.description}${f.snippet ? `\n\`\`\`\n${f.snippet}\n\`\`\`` : ''}`,
+                            )
+                            .join('\n\n');
+                          void handleCopy(text, 'review');
+                        }}
+                      >
+                        {copiedKey === 'review' ? 'Copied!' : 'Copy all'}
+                      </button>
+                    </div>
                     <div className="d-flex flex-column gap-3">
                       {reviewFindings.map((finding, index) => (
                         <div key={index} className="card border-0 shadow-sm">
                           <div className="card-body py-2 px-3">
                             <div className="d-flex align-items-center gap-2 mb-1">
-                              <span className={`badge bg-${SEVERITY_COLORS[finding.severity] || 'secondary'}`}>
+                              <span
+                                className={`badge bg-${SEVERITY_COLORS[finding.severity] || 'secondary'}`}
+                              >
                                 {finding.severity}
                               </span>
                               <span className="badge bg-secondary">
                                 {TYPE_LABELS[finding.type] || finding.type}
                               </span>
-                              <code className="small text-muted">{finding.file}{finding.line ? `:${finding.line}` : ''}</code>
+                              <code className="small text-muted">
+                                {finding.file}
+                                {finding.line ? `:${finding.line}` : ''}
+                              </code>
                             </div>
                             <p className="mb-1 small">{finding.description}</p>
                             {finding.snippet && (
-                              <pre className="bg-body-tertiary rounded p-2 small mb-2" style={{ whiteSpace: 'pre-wrap', maxHeight: 150, overflow: 'auto' }}>
+                              <pre
+                                className="bg-body-tertiary rounded p-2 small mb-2"
+                                style={{ whiteSpace: 'pre-wrap', maxHeight: 150, overflow: 'auto' }}
+                              >
                                 <code>{finding.snippet}</code>
                               </pre>
                             )}
@@ -910,11 +1038,29 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
                               </button>
                             </div>
                             {fixResults[index] && (
-                              <div className="mt-2">
-                                <p className="small text-muted mb-1">{fixResults[index].explanation}</p>
-                                <pre className="bg-body-tertiary rounded p-2 small" style={{ whiteSpace: 'pre-wrap', maxHeight: 200, overflow: 'auto' }}>
+                              <div className="mt-2 position-relative">
+                                <p className="small text-muted mb-1">
+                                  {fixResults[index].explanation}
+                                </p>
+                                <pre
+                                  className="bg-body-tertiary rounded p-2 small"
+                                  style={{
+                                    whiteSpace: 'pre-wrap',
+                                    maxHeight: 200,
+                                    overflow: 'auto',
+                                  }}
+                                >
                                   <code>{fixResults[index].improvedCode}</code>
                                 </pre>
+                                <button
+                                  type="button"
+                                  className="copy-btn"
+                                  onClick={() =>
+                                    void handleCopy(fixResults[index].improvedCode, `fix-${index}`)
+                                  }
+                                >
+                                  {copiedKey === `fix-${index}` ? 'Copied!' : 'Copy'}
+                                </button>
                               </div>
                             )}
                           </div>
@@ -926,7 +1072,8 @@ const ProjectCard = ({ project, onUpdate, onDelete }: Props) => {
 
                 {!reviewLoading && reviewFindings.length === 0 && reviewCommitsAnalyzed > 0 && (
                   <div className="alert alert-success py-2">
-                    No issues found in the last {reviewCommitsAnalyzed} commit{reviewCommitsAnalyzed !== 1 ? 's' : ''}. Code looks good!
+                    No issues found in the last {reviewCommitsAnalyzed} commit
+                    {reviewCommitsAnalyzed !== 1 ? 's' : ''}. Code looks good!
                   </div>
                 )}
               </div>

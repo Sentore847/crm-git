@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import api from '../services/api';
+import api from '@/services/api';
 
 interface Props {
   onDismiss: () => void;
@@ -64,12 +64,12 @@ const IntroGuide = ({ onDismiss }: Props) => {
     if (isLastStep) {
       void handleDismiss();
     } else {
-      setCurrentStep(prev => prev + 1);
+      setCurrentStep((prev) => prev + 1);
     }
   };
 
   const handlePrev = () => {
-    setCurrentStep(prev => Math.max(0, prev - 1));
+    setCurrentStep((prev) => Math.max(0, prev - 1));
   };
 
   return (
@@ -97,13 +97,13 @@ const IntroGuide = ({ onDismiss }: Props) => {
 
         {/* Progress bar */}
         <div className="px-3 pt-2">
-          <div
-            className="progress"
-            style={{ height: 4 }}
-          >
+          <div className="progress" style={{ height: 4 }}>
             <div
               className="progress-bar"
-              style={{ width: `${((currentStep + 1) / steps.length) * 100}%`, transition: 'width 0.3s ease' }}
+              style={{
+                width: `${((currentStep + 1) / steps.length) * 100}%`,
+                transition: 'width 0.3s ease',
+              }}
             />
           </div>
         </div>
@@ -131,7 +131,7 @@ const IntroGuide = ({ onDismiss }: Props) => {
                 className="form-check-input"
                 id="intro-dont-show"
                 checked={dontShowAgain}
-                onChange={e => setDontShowAgain(e.target.checked)}
+                onChange={(e) => setDontShowAgain(e.target.checked)}
               />
               <label className="form-check-label" htmlFor="intro-dont-show">
                 Don't show this guide again
@@ -148,11 +148,7 @@ const IntroGuide = ({ onDismiss }: Props) => {
             >
               Previous
             </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={handleNext}
-            >
+            <button type="button" className="btn btn-primary" onClick={handleNext}>
               {isLastStep ? 'Get Started' : 'Next'}
             </button>
           </div>

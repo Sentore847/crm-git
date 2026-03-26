@@ -7,6 +7,7 @@ export interface Project {
   forks: number;
   issues: number;
   createdAt: number;
+  isFavorite: boolean;
 }
 
 export interface ProjectsPagination {

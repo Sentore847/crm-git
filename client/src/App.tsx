@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Projects from './pages/Projects';
-import AppErrorBoundary from './components/AppErrorBoundary';
+import AppErrorBoundary from '@/components/AppErrorBoundary';
 
 type ThemeMode = 'system' | 'light' | 'dark';
 
@@ -89,7 +89,7 @@ const App = () => {
       typeof window.matchMedia === 'function'
         ? window.matchMedia('(prefers-color-scheme: dark)')
         : null,
-    []
+    [],
   );
 
   useEffect(() => {
@@ -178,6 +178,9 @@ const App = () => {
 
   return (
     <Router>
+      <a href="#main-content" className="skip-to-content">
+        Skip to main content
+      </a>
       <div
         ref={themeMenuRef}
         className={`theme-fab${isThemeMenuOpen ? ' open' : ''}`}
@@ -192,7 +195,7 @@ const App = () => {
           aria-label="Theme"
           aria-haspopup="menu"
           aria-expanded={isThemeMenuOpen}
-          onClick={() => setIsThemeMenuOpen(prev => !prev)}
+          onClick={() => setIsThemeMenuOpen((prev) => !prev)}
         >
           <ThemeIcon mode={themeMode} className={`theme-fab-icon mode-${themeMode}`} />
         </button>
@@ -204,7 +207,7 @@ const App = () => {
           onMouseLeave={scheduleThemeMenuClose}
         >
           <div className="theme-fab-title">Theme</div>
-          {themeOptions.map(option => (
+          {themeOptions.map((option) => (
             <button
               key={option.value}
               type="button"
@@ -232,7 +235,11 @@ const App = () => {
           <Route
             path="/login"
             element={
-              isAuthenticated ? <Navigate to="/projects" /> : <Login onLogin={() => setIsAuthenticated(true)} />
+              isAuthenticated ? (
+                <Navigate to="/projects" />
+              ) : (
+                <Login onLogin={() => setIsAuthenticated(true)} />
+              )
             }
           />
           <Route path="/signup" element={<Signup />} />
@@ -240,7 +247,7 @@ const App = () => {
             path="/projects"
             element={isAuthenticated ? <Projects onLogout={logout} /> : <Navigate to="/login" />}
           />
-          <Route path="*" element={<Navigate to={isAuthenticated ? "/projects" : "/login"} />} />
+          <Route path="*" element={<Navigate to={isAuthenticated ? '/projects' : '/login'} />} />
         </Routes>
       </AppErrorBoundary>
     </Router>

@@ -1,5 +1,5 @@
-import type { Project } from '../types/project.types';
-import api from '../services/api';
+import type { Project } from '@/types/project.types';
+import api from '@/services/api';
 import axios from 'axios';
 
 interface Props {
