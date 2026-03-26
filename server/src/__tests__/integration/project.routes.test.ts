@@ -42,8 +42,11 @@ jest.mock('../../utils/provider-error', () => ({
 
 const { prisma } = require('../../utils/prisma');
 
-const generateToken = (userId: string) =>
-  jwt.sign({ userId }, process.env.JWT_SECRET!);
+const TEST_USER_ID = '00000000-0000-4000-8000-000000000001';
+const TEST_USER_ID_2 = '00000000-0000-4000-8000-000000000002';
+const TEST_PROJECT_ID = '00000000-0000-4000-8000-000000000010';
+
+const generateToken = (userId: string) => jwt.sign({ userId }, process.env.JWT_SECRET!);
 
 describe('Project Routes Integration', () => {
   beforeEach(() => {
@@ -64,21 +67,17 @@ describe('Project Routes Integration', () => {
     });
 
     it('should return projects with valid token (legacy)', async () => {
-      const token = generateToken('user-1');
-      prisma.project.findMany.mockResolvedValue([
-        { id: 'p1', name: 'repo1', owner: 'owner1' },
-      ]);
+      const token = generateToken(TEST_USER_ID);
+      prisma.project.findMany.mockResolvedValue([{ id: 'p1', name: 'repo1', owner: 'owner1' }]);
 
-      const res = await request(app)
-        .get('/api/projects')
-        .set('Authorization', `Bearer ${token}`);
+      const res = await request(app).get('/api/projects').set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
     });
 
     it('should return paginated projects', async () => {
-      const token = generateToken('user-1');
+      const token = generateToken(TEST_USER_ID);
       prisma.project.count.mockResolvedValue(10);
       prisma.project.findMany.mockResolvedValue([{ id: 'p1' }, { id: 'p2' }, { id: 'p3' }]);
 
@@ -94,7 +93,7 @@ describe('Project Routes Integration', () => {
 
   describe('POST /api/projects', () => {
     it('should return 400 for missing repoPath', async () => {
-      const token = generateToken('user-1');
+      const token = generateToken(TEST_USER_ID);
 
       const res = await request(app)
         .post('/api/projects')
@@ -105,7 +104,7 @@ describe('Project Routes Integration', () => {
     });
 
     it('should create project with valid repoPath', async () => {
-      const token = generateToken('user-1');
+      const token = generateToken(TEST_USER_ID);
       prisma.project.findMany.mockResolvedValue([]);
       prisma.project.create.mockResolvedValue({
         id: 'new-proj',
@@ -129,15 +128,15 @@ describe('Project Routes Integration', () => {
 
   describe('DELETE /api/projects/:id', () => {
     it('should delete project owned by user', async () => {
-      const token = generateToken('user-1');
+      const token = generateToken(TEST_USER_ID);
       prisma.project.findUnique.mockResolvedValue({
-        id: 'proj-1',
-        userId: 'user-1',
+        id: TEST_PROJECT_ID,
+        userId: TEST_USER_ID,
       });
       prisma.project.delete.mockResolvedValue(undefined);
 
       const res = await request(app)
-        .delete('/api/projects/proj-1')
+        .delete(`/api/projects/${TEST_PROJECT_ID}`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(200);
@@ -145,14 +144,14 @@ describe('Project Routes Integration', () => {
     });
 
     it('should return 404 for non-owned project', async () => {
-      const token = generateToken('user-1');
+      const token = generateToken(TEST_USER_ID);
       prisma.project.findUnique.mockResolvedValue({
-        id: 'proj-1',
-        userId: 'other-user',
+        id: TEST_PROJECT_ID,
+        userId: TEST_USER_ID_2,
       });
 
       const res = await request(app)
-        .delete('/api/projects/proj-1')
+        .delete(`/api/projects/${TEST_PROJECT_ID}`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(404);

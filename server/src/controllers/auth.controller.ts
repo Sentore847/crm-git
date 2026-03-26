@@ -10,10 +10,6 @@ const BCRYPT_ROUNDS = 10;
 export const signup = asyncHandler(async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
-    throw new AppError(400, 'Email and password are required');
-  }
-
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     throw new AppError(409, 'User with this email already exists');
@@ -29,10 +25,6 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
 
 export const login = asyncHandler(async (req: Request, res: Response) => {
   const { email, password } = req.body;
-
-  if (!email || !password) {
-    throw new AppError(400, 'Email and password are required');
-  }
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {

@@ -11,6 +11,7 @@ import {
   getProjectPullRequestsForUser,
   getProjectsForUser,
   getProjectsForUserLegacy,
+  toggleFavoriteForUser,
   updateProjectForUser,
 } from '../services/project.service';
 import {
@@ -22,18 +23,14 @@ import {
 } from '../services/project-ai.service';
 
 export const addProject = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { repoPath } = req.body as { repoPath?: string };
-
-  if (!repoPath || typeof repoPath !== 'string') {
-    throw new AppError(400, 'Invalid repository path. Use "owner/repo" (GitHub), "gitlab:group/repo", "bitbucket:workspace/repo" or full HTTPS URL.');
-  }
+  const { repoPath } = req.body;
 
   const project = await addProjectForUser(req.userId!, repoPath);
   res.status(201).json(project);
 });
 
 export const getProjects = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { page, limit } = req.query;
+  const { page, limit, search, platform, sortBy, sortDir, favorite } = req.query;
 
   if (typeof page === 'undefined' && typeof limit === 'undefined') {
     const projects = await getProjectsForUserLegacy(req.userId!);
@@ -41,7 +38,15 @@ export const getProjects = asyncHandler(async (req: AuthRequest, res: Response) 
     return;
   }
 
-  const projects = await getProjectsForUser(req.userId!, page, limit);
+  const projects = await getProjectsForUser(req.userId!, {
+    page,
+    limit,
+    search: typeof search === 'string' ? search : undefined,
+    platform: typeof platform === 'string' ? platform : undefined,
+    sortBy: typeof sortBy === 'string' ? sortBy : undefined,
+    sortDir: typeof sortDir === 'string' ? sortDir : undefined,
+    favorite: typeof favorite === 'string' ? favorite : undefined,
+  });
   res.json(projects);
 });
 
@@ -69,41 +74,44 @@ export const getProjectPullRequests = asyncHandler(async (req: AuthRequest, res:
 });
 
 export const askLatestChangesInBranch = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { branchName } = req.body as { branchName?: string };
-  const summary = await summarizeLatestBranchChanges(req.params.id, req.userId!, branchName || '');
+  const { branchName } = req.body;
+  const summary = await summarizeLatestBranchChanges(req.params.id, req.userId!, branchName);
   res.json(summary);
 });
 
 export const askLatestIssuesOverview = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { limit } = req.body as { limit?: unknown };
+  const { limit } = req.body;
   const summary = await summarizeLatestIssues(req.params.id, req.userId!, limit);
   res.json(summary);
 });
 
-export const askLatestPullRequestsOverview = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { limit } = req.body as { limit?: unknown };
-  const summary = await summarizeLatestPullRequests(req.params.id, req.userId!, limit);
-  res.json(summary);
-});
+export const askLatestPullRequestsOverview = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const { limit } = req.body;
+    const summary = await summarizeLatestPullRequests(req.params.id, req.userId!, limit);
+    res.json(summary);
+  },
+);
 
 export const askCodeReview = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { branchName } = req.body as { branchName?: string };
-  const result = await reviewRecentCode(req.params.id, req.userId!, branchName || '');
+  const { branchName } = req.body;
+  const result = await reviewRecentCode(req.params.id, req.userId!, branchName);
   res.json(result);
 });
 
 export const askCodeFix = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { file, snippet, description } = req.body as {
-    file?: string;
-    snippet?: string;
-    description?: string;
-  };
+  const { file, snippet, description } = req.body;
   const result = await suggestCodeFix(req.params.id, req.userId!, {
-    file: file || '',
-    snippet: snippet || '',
-    description: description || '',
+    file,
+    snippet,
+    description,
   });
   res.json(result);
+});
+
+export const toggleFavorite = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const updatedProject = await toggleFavoriteForUser(req.params.id, req.userId!);
+  res.json(updatedProject);
 });
 
 export const deleteProject = asyncHandler(async (req: AuthRequest, res: Response) => {

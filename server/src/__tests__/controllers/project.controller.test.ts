@@ -1,4 +1,9 @@
-import { addProject, getProjects, deleteProject } from '../../controllers/project.controller';
+import {
+  addProject,
+  getProjects,
+  deleteProject,
+  toggleFavorite,
+} from '../../controllers/project.controller';
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../../middlewares/auth.middleware';
 
@@ -7,6 +12,7 @@ jest.mock('../../services/project.service', () => ({
   getProjectsForUser: jest.fn(),
   getProjectsForUserLegacy: jest.fn(),
   deleteProjectForUser: jest.fn(),
+  toggleFavoriteForUser: jest.fn(),
   updateProjectForUser: jest.fn(),
   getProjectDetailsForUser: jest.fn(),
   getProjectBranchesForUser: jest.fn(),
@@ -27,6 +33,7 @@ const {
   getProjectsForUser,
   getProjectsForUserLegacy,
   deleteProjectForUser,
+  toggleFavoriteForUser,
 } = require('../../services/project.service');
 
 const createMockResponse = () => {
@@ -45,24 +52,6 @@ describe('project.controller', () => {
   });
 
   describe('addProject', () => {
-    it('should throw 400 when repoPath is missing', async () => {
-      const req = { body: {}, userId: 'user-1' } as AuthRequest;
-      const res = createMockResponse();
-
-      await (addProject as any)(req, res, mockNext);
-      const error = (mockNext as jest.Mock).mock.calls[0][0];
-      expect(error.statusCode).toBe(400);
-    });
-
-    it('should throw 400 when repoPath is not a string', async () => {
-      const req = { body: { repoPath: 123 }, userId: 'user-1' } as AuthRequest;
-      const res = createMockResponse();
-
-      await (addProject as any)(req, res, mockNext);
-      const error = (mockNext as jest.Mock).mock.calls[0][0];
-      expect(error.statusCode).toBe(400);
-    });
-
     it('should create project and return 201', async () => {
       const mockProject = { id: 'proj-1', name: 'repo', owner: 'owner' };
       addProjectForUser.mockResolvedValue(mockProject);
@@ -98,7 +87,29 @@ describe('project.controller', () => {
       const res = createMockResponse();
 
       await (getProjects as any)(req, res, mockNext);
-      expect(getProjectsForUser).toHaveBeenCalledWith('user-1', '1', '3');
+      expect(getProjectsForUser).toHaveBeenCalledWith('user-1', {
+        page: '1',
+        limit: '3',
+        search: undefined,
+        platform: undefined,
+        sortBy: undefined,
+        sortDir: undefined,
+        favorite: undefined,
+      });
+    });
+  });
+
+  describe('toggleFavorite', () => {
+    it('should toggle favorite and return updated project', async () => {
+      const mockProject = { id: 'proj-1', name: 'repo', isFavorite: true };
+      toggleFavoriteForUser.mockResolvedValue(mockProject);
+
+      const req = { params: { id: 'proj-1' }, userId: 'user-1' } as unknown as AuthRequest;
+      const res = createMockResponse();
+
+      await (toggleFavorite as any)(req, res, mockNext);
+      expect(toggleFavoriteForUser).toHaveBeenCalledWith('proj-1', 'user-1');
+      expect(res.json).toHaveBeenCalledWith(mockProject);
     });
   });
 

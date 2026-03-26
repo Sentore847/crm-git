@@ -1,6 +1,15 @@
 import { errorHandler } from '../../middlewares/error.middleware';
 import { AppError } from '../../utils/app-error';
 import { Request, Response, NextFunction } from 'express';
+import { logger } from '../../config/logger';
+
+jest.mock('../../config/logger', () => ({
+  logger: {
+    error: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+  },
+}));
 
 describe('errorHandler middleware', () => {
   let mockReq: Request;
@@ -15,11 +24,7 @@ describe('errorHandler middleware', () => {
     mockReq = {} as Request;
     mockRes = { status: statusMock, json: jsonMock } as any;
     mockNext = jest.fn();
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
+    jest.clearAllMocks();
   });
 
   it('should handle AppError with correct status and message', () => {
@@ -49,15 +54,15 @@ describe('errorHandler middleware', () => {
     expect(jsonMock).toHaveBeenCalledWith({ message: 'Internal server error' });
   });
 
-  it('should log unhandled errors to console', () => {
+  it('should log unhandled errors via logger', () => {
     const error = new Error('unhandled');
     errorHandler(error, mockReq, mockRes as Response, mockNext);
-    expect(console.error).toHaveBeenCalledWith('Unhandled error:', error);
+    expect(logger.error).toHaveBeenCalledWith({ err: error }, 'Unhandled error');
   });
 
-  it('should not log AppError to console', () => {
+  it('should not log AppError', () => {
     const error = new AppError(400, 'expected');
     errorHandler(error, mockReq, mockRes as Response, mockNext);
-    expect(console.error).not.toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
   });
 });

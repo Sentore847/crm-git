@@ -24,16 +24,17 @@ model User {
 }
 
 model Project {
-  id        String @id @default(uuid())
-  owner     String
-  name      String
-  url       String
-  stars     Int
-  forks     Int
-  issues    Int
-  createdAt Int
-  userId    String
-  user      User   @relation(fields: [userId], references: [id])
+  id         String  @id @default(uuid())
+  owner      String
+  name       String
+  url        String
+  stars      Int
+  forks      Int
+  issues     Int
+  createdAt  Int
+  isFavorite Boolean @default(false)
+  userId     String
+  user       User    @relation(fields: [userId], references: [id])
 
   @@map("projects")
 }

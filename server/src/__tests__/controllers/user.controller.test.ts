@@ -21,7 +21,7 @@ const createMockResponse = () => {
   return res as Response;
 };
 
-const flushPromises = () => new Promise(resolve => setImmediate(resolve));
+const flushPromises = () => new Promise((resolve) => setImmediate(resolve));
 
 describe('user.controller', () => {
   let mockNext: jest.Mock;
@@ -71,9 +71,7 @@ describe('user.controller', () => {
       getSettings(req, res, mockNext);
       await flushPromises();
 
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ aiApiKey: null })
-      );
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ aiApiKey: null }));
     });
 
     it('should throw 404 when user not found', async () => {
@@ -105,9 +103,7 @@ describe('user.controller', () => {
       getSettings(req, res, mockNext);
       await flushPromises();
 
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ aiApiKey: '****' })
-      );
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ aiApiKey: '****' }));
     });
   });
 
@@ -130,20 +126,8 @@ describe('user.controller', () => {
       expect(mockedPrisma.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ aiProvider: 'gemini' }),
-        })
+        }),
       );
-    });
-
-    it('should throw 400 for invalid provider', async () => {
-      const req = { userId: 'user-1', body: { aiProvider: 'invalid' } } as AuthRequest;
-      const res = createMockResponse();
-
-      updateSettings(req, res, mockNext);
-      await flushPromises();
-
-      expect(mockNext).toHaveBeenCalled();
-      const error = mockNext.mock.calls[0][0];
-      expect(error.statusCode).toBe(400);
     });
 
     it('should update hideIntro flag', async () => {
@@ -164,7 +148,7 @@ describe('user.controller', () => {
       expect(mockedPrisma.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ hideIntro: true }),
-        })
+        }),
       );
     });
 
@@ -186,7 +170,7 @@ describe('user.controller', () => {
       expect(mockedPrisma.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ aiApiKey: 'sk-trimmed' }),
-        })
+        }),
       );
     });
 
@@ -208,7 +192,7 @@ describe('user.controller', () => {
       expect(mockedPrisma.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ aiApiKey: null }),
-        })
+        }),
       );
     });
   });

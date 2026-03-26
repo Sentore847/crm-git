@@ -27,7 +27,7 @@ const createMockResponse = () => {
   return res as Response;
 };
 
-const flushPromises = () => new Promise(resolve => setImmediate(resolve));
+const flushPromises = () => new Promise((resolve) => setImmediate(resolve));
 
 describe('auth.controller', () => {
   let mockNext: jest.Mock;
@@ -38,32 +38,11 @@ describe('auth.controller', () => {
   });
 
   describe('signup', () => {
-    it('should throw 400 when email is missing', async () => {
-      const req = { body: { password: '123456' } } as Request;
-      const res = createMockResponse();
-
-      signup(req, res, mockNext);
-      await flushPromises();
-
-      expect(mockNext).toHaveBeenCalled();
-      const error = mockNext.mock.calls[0][0];
-      expect(error.statusCode).toBe(400);
-    });
-
-    it('should throw 400 when password is missing', async () => {
-      const req = { body: { email: 'test@test.com' } } as Request;
-      const res = createMockResponse();
-
-      signup(req, res, mockNext);
-      await flushPromises();
-
-      expect(mockNext).toHaveBeenCalled();
-      const error = mockNext.mock.calls[0][0];
-      expect(error.statusCode).toBe(400);
-    });
-
     it('should throw 409 when user already exists', async () => {
-      (mockedPrisma.user.findUnique as jest.Mock).mockResolvedValue({ id: '1', email: 'test@test.com' });
+      (mockedPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+        id: '1',
+        email: 'test@test.com',
+      });
 
       const req = { body: { email: 'test@test.com', password: '123456' } } as Request;
       const res = createMockResponse();
@@ -93,23 +72,12 @@ describe('auth.controller', () => {
 
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'user-1', email: 'new@test.com' })
+        expect.objectContaining({ id: 'user-1', email: 'new@test.com' }),
       );
     });
   });
 
   describe('login', () => {
-    it('should throw 400 when email is missing', async () => {
-      const req = { body: { password: '123456' } } as Request;
-      const res = createMockResponse();
-
-      login(req, res, mockNext);
-      await flushPromises();
-
-      const error = mockNext.mock.calls[0][0];
-      expect(error.statusCode).toBe(400);
-    });
-
     it('should throw 401 when user not found', async () => {
       (mockedPrisma.user.findUnique as jest.Mock).mockResolvedValue(null);
 
